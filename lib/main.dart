@@ -8,6 +8,8 @@ import 'preferences_page.dart';
 import 'catalog.dart';
 import 'basket.dart';
 import 'admin.dart';
+import 'search.dart';
+
 
 void main() {
   runApp(
