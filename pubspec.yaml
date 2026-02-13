@@ -35,6 +35,11 @@ dependencies:
   provider: ^6.0.5
   shared_preferences: ^2.2.2
 
+  # E-Reader dependencies
+  flutter_html: ^3.0.0-beta.2
+  epub_parser: ^3.0.1
+  archive: ^3.4.10
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -60,6 +65,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -91,3 +99,7 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+#dependency_overrides:
+#  wakelock: ^0.6.2
+#  wakelock_platform_interface: ^0.3.0

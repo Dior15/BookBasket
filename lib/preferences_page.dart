@@ -13,7 +13,7 @@ class _PreferencesPageState extends State<PreferencesPage> {
   final List<Color> colorOptions = [
     Colors.red,
     Colors.blue,
-    Colors.green,
+    Colors.lightGreenAccent,
     Colors.black,
     Colors.white,
     Colors.orange,
