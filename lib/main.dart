@@ -9,7 +9,8 @@ import 'catalog.dart';
 import 'basket.dart';
 import 'admin.dart';
 import 'search.dart';
-
+import 'login_page.dart';
+import 'auth_service.dart';
 
 void main() {
   runApp(
@@ -54,7 +55,7 @@ class MyApp extends StatelessWidget {
       theme: lightTheme,
       darkTheme: darkTheme,
       themeMode: themeMode,
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const AuthGate(),
     );
   }
 }
@@ -73,5 +74,47 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     // Change the widget being returned to test different pages
     return const Basket();
+  }
+}
+
+class AuthGate extends StatefulWidget {
+  const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool _loading = true;
+  bool _loggedIn = false;
+  bool _admin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final loggedIn = await AuthService.isLoggedIn();
+    final admin = loggedIn ? await AuthService.isAdmin() : false;
+
+    setState(() {
+      _loggedIn = loggedIn;
+      _admin = admin;
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (!_loggedIn) return const LoginPage();
+    return _admin ? const AdminPage() : const Basket();
   }
 }
