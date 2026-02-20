@@ -21,8 +21,8 @@ class _LoginPageState extends State<LoginPage> {
   bool _loading = false;
   String? _errorText;
 
-  // Toggle this to trigger the Shake widget
-  bool _shake = false;
+  // ✅ Use an int that increments every failure so shake triggers EVERY time
+  int _shakeKey = 0;
 
   @override
   void dispose() {
@@ -54,7 +54,7 @@ class _LoginPageState extends State<LoginPage> {
     if (!success) {
       setState(() {
         _errorText = 'Wrong email or password (demo accounts only).';
-        _shake = !_shake; // trigger shake animation
+        _shakeKey++; // ✅ triggers shake animation every time
       });
       return;
     }
@@ -94,7 +94,6 @@ class _LoginPageState extends State<LoginPage> {
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 24),
-
                 if (_errorText != null) ...[
                   Text(
                     _errorText!,
@@ -104,8 +103,9 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 12),
                 ],
 
+                // ✅ Updated Shake call to use shakeKey (not trigger bool)
                 Shake(
-                  trigger: _shake,
+                  shakeKey: _shakeKey,
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -152,7 +152,6 @@ class _LoginPageState extends State<LoginPage> {
                           },
                         ),
                         const SizedBox(height: 16),
-
                         ElevatedButton(
                           onPressed: _loading ? null : _handleLogin,
                           child: _loading
@@ -163,11 +162,9 @@ class _LoginPageState extends State<LoginPage> {
                           )
                               : const Text('Login'),
                         ),
-
                         const SizedBox(height: 16),
                         const Divider(),
                         const SizedBox(height: 8),
-
                         const Text(
                           'Demo accounts:',
                           style: TextStyle(fontWeight: FontWeight.w600),
