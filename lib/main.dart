@@ -4,11 +4,8 @@ import 'package:provider/provider.dart';
 import 'themes/theme_notifier.dart';
 import 'themes/theme_builder.dart';
 
-import 'preferences_page.dart';
-import 'catalog.dart';
 import 'basket.dart';
 import 'admin.dart';
-import 'search.dart';
 import 'login_page.dart';
 import 'auth_service.dart';
 
@@ -34,8 +31,10 @@ class MyApp extends StatelessWidget {
 
     // Apply Advanced theme
     if (themeNotifier.themeType == ThemeType.advanced) {
-      final advancedTheme =
-      buildAdvancedTheme(themeNotifier.backgroundColor, themeNotifier.foregroundColor);
+      final advancedTheme = buildAdvancedTheme(
+        themeNotifier.backgroundColor,
+        themeNotifier.foregroundColor,
+      );
 
       lightTheme = advancedTheme;
       darkTheme = advancedTheme;
@@ -50,30 +49,13 @@ class MyApp extends StatelessWidget {
     }
 
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'BookBasket',
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
       themeMode: themeMode,
       home: const AuthGate(),
     );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  @override
-  Widget build(BuildContext context) {
-    // Change the widget being returned to test different pages
-    return const Basket();
   }
 }
 
@@ -88,6 +70,7 @@ class _AuthGateState extends State<AuthGate> {
   bool _loading = true;
   bool _loggedIn = false;
   bool _admin = false;
+  String? _error;
 
   @override
   void initState() {
@@ -96,13 +79,40 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   Future<void> _load() async {
-    final loggedIn = await AuthService.isLoggedIn();
-    final admin = loggedIn ? await AuthService.isAdmin() : false;
+    try {
+      final loggedIn = await AuthService.isLoggedIn();
+      final admin = loggedIn ? await AuthService.isAdmin() : false;
 
+      if (!mounted) return;
+      setState(() {
+        _loggedIn = loggedIn;
+        _admin = admin;
+        _loading = false;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Auth load failed: $e';
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _forceSignOut() async {
+    // If your AuthService has logout(), this will work immediately.
+    // If it doesn’t, uninstall/clear app storage once, or paste auth_service.dart
+    // and I’ll add a proper logout() method that clears SharedPreferences.
+    try {
+      await AuthService.logout();
+    } catch (_) {
+      // ignore so you can still escape even if logout isn't implemented
+    }
+
+    if (!mounted) return;
     setState(() {
-      _loggedIn = loggedIn;
-      _admin = admin;
-      _loading = false;
+      _loggedIn = false;
+      _admin = false;
     });
   }
 
@@ -114,7 +124,31 @@ class _AuthGateState extends State<AuthGate> {
       );
     }
 
+    if (_error != null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(_error!, textAlign: TextAlign.center),
+          ),
+        ),
+      );
+    }
+
     if (!_loggedIn) return const LoginPage();
-    return _admin ? const AdminPage() : const Basket();
+
+    if (_admin) {
+      // ✅ Admin page + an "escape hatch" logout button so you're never stuck
+      return Scaffold(
+        body: const AdminPage(),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _forceSignOut,
+          icon: const Icon(Icons.logout),
+          label: const Text('Sign out'),
+        ),
+      );
+    }
+
+    return const Basket();
   }
 }

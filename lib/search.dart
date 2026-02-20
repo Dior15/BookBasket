@@ -1,88 +1,135 @@
 import 'package:flutter/material.dart';
 
-class SearchPage extends StatefulWidget {
-  const SearchPage({Key? key}) : super(key: key);
+class Search extends StatefulWidget {
+  const Search({super.key});
 
   @override
-  _SearchPageState createState() => _SearchPageState();
+  State<Search> createState() => _SearchState();
 }
 
-class _SearchPageState extends State<SearchPage> {
-  final TextEditingController _controller = TextEditingController();
+class _SearchState extends State<Search> {
+  final TextEditingController _searchCtrl = TextEditingController();
+
   String _query = '';
   bool _isLoading = false;
-  // Placeholder for future results
-  List<String> _results = [];
+  List<String> _results = const [];
+
+  // Demo data (replace with real backend/db results later)
+  final List<String> _allBooks = const [
+    'The Great Gatsby',
+    'To Kill a Mockingbird',
+    '1984',
+    'Pride and Prejudice',
+    'The Catcher in the Rye',
+    'The Hobbit',
+    'Fahrenheit 451',
+    'Moby-Dick',
+    'Brave New World',
+    'Jane Eyre',
+    'The Alchemist',
+    'The Book Thief',
+    'The Hunger Games',
+    'Dune',
+    'Harry Potter and the Sorcerer\'s Stone',
+  ];
 
   @override
   void dispose() {
-    _controller.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
-  // This is a hook for when backend/search is wired up
-  Future<void> _performSearch(String query) async {
+  Future<void> _runSearch(String value) async {
+    final q = value.trim();
     setState(() {
+      _query = q;
       _isLoading = true;
-      _query = query;
     });
 
-    // TODO: Replace with actual backend call
-    await Future.delayed(const Duration(milliseconds: 600));
+    // Small delay to show loading animation (feels more “real”)
+    await Future.delayed(const Duration(milliseconds: 250));
 
-    // Placeholder: simulate results for now
-    List<String> fauxResults = [];
-    if (query.trim().isNotEmpty) {
-      fauxResults = List.generate(
-        6,
-            (i) => 'Result ${i + 1} for "$query"',
-      );
+    if (q.isEmpty) {
+      setState(() {
+        _results = const [];
+        _isLoading = false;
+      });
+      return;
     }
 
+    final lowered = q.toLowerCase();
+    final filtered = _allBooks
+        .where((b) => b.toLowerCase().contains(lowered))
+        .toList(growable: false);
+
     setState(() {
-      _results = fauxResults;
+      _results = filtered;
       _isLoading = false;
     });
   }
 
-  Widget _buildResultItem(String text) {
-    // Basic list tile representing a result
-    return ListTile(
-      leading: const Icon(Icons.book),
-      title: Text(text),
-      subtitle: const Text('Bookbasket item placeholder'),
-      onTap: () {
-      // Hook for future detail navigation
-      },
+  Widget _buildResultItem(String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Card(
+        child: ListTile(
+          leading: const Icon(Icons.menu_book),
+          title: Text(title),
+          subtitle: const Text('Tap to view (demo)'),
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Tapped: $title')),
+            );
+          },
+        ),
+      ),
     );
   }
 
   Widget _buildResults() {
-    if (_isLoading) {
-      // Simple loading shimmer / progress indicator
-      return const Expanded(
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
+    Widget content;
 
-    if (_results.isEmpty) {
-      return Expanded(
-        child: Center(
-          child: Text(
-            _query.isEmpty
-                ? 'Start typing to search for books.'
-                : 'No results yet. Implement backend to fetch results for "$_query".',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.grey),
-          ),
+    if (_isLoading) {
+      content = const Center(child: CircularProgressIndicator());
+    } else if (_results.isEmpty) {
+      content = Center(
+        child: Text(
+          _query.isEmpty
+              ? 'Start typing to search for books.'
+              : 'No results found for "$_query".',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.grey),
         ),
+      );
+    } else {
+      content = ListView.builder(
+        key: ValueKey(_results.length),
+        itemCount: _results.length,
+        itemBuilder: (context, index) {
+          final item = _results[index];
+          return TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: 1),
+            duration: Duration(milliseconds: 220 + index * 60),
+            curve: Curves.easeOutCubic,
+            builder: (context, t, child) => Opacity(
+              opacity: t,
+              child: Transform.translate(
+                offset: Offset(0, (1 - t) * 8),
+                child: child,
+              ),
+            ),
+            child: _buildResultItem(item),
+          );
+        },
       );
     }
 
     return Expanded(
-      child: ListView.builder(
-        itemCount: _results.length,
-        itemBuilder: (context, index) => _buildResultItem(_results[index]),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: content,
       ),
     );
   }
@@ -92,50 +139,33 @@ class _SearchPageState extends State<SearchPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Search'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: () {
-              // Placeholder for future filters
-            },
-          ),
-        ],
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _controller,
-              onChanged: (val) {
-                // Debounce or trigger search as needed
-                // For wireframe, we perform live search
-                _performSearch(val);
-              },
-              onSubmitted: (val) => _performSearch(val),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+            child: TextField(
+              controller: _searchCtrl,
               decoration: InputDecoration(
-                hintText: 'Search books, authors, subjects…',
+                hintText: 'Search books...',
                 prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.0),
+                suffixIcon: _query.isEmpty
+                    ? null
+                    : IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    _runSearch('');
+                  },
                 ),
+                border: const OutlineInputBorder(),
               ),
+              onChanged: _runSearch,
             ),
-            const SizedBox(height: 12.0),
-            // Optional quick filters row (wireframe)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Chip(label: Text('All')),
-                Chip(label: Text('Titles')),
-                Chip(label: Text('Authors')),
-              ],
-            ),
-            const SizedBox(height: 8.0),
-            // Results area
-            _buildResults(),
-          ],
-        ),
+          ),
+          _buildResults(),
+        ],
       ),
     );
   }

@@ -32,7 +32,7 @@ class _DrawerShellState extends State<DrawerShell> {
     DrawerDestination(
       title: 'Search',
       icon: Icons.search,
-      builder: (_) => const SearchPage(),
+      builder: (_) => const Search(), // ✅ fixed (was SearchPage)
     ),
     DrawerDestination(
       title: 'Basket',
@@ -89,9 +89,7 @@ class _DrawerShellState extends State<DrawerShell> {
       body: IndexedStack(
         index: _index,
         children: _destinations
-            .map(
-              (destination) => Builder(builder: destination.builder),
-            )
+            .map((destination) => Builder(builder: destination.builder))
             .toList(),
       ),
     );

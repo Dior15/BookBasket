@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'animations/app_page_route.dart';
+import 'animations/staggered_in.dart';
+import 'animations/book_details_page.dart';
+import 'animations/book_card.dart';
 
 class Catalog extends StatefulWidget {
   const Catalog({super.key});
@@ -8,119 +12,105 @@ class Catalog extends StatefulWidget {
 }
 
 class CatalogState extends State<Catalog> {
+  void _openDetails(String title, Color color, String heroTag) {
+    Navigator.of(context).push(
+      AppPageRoute(
+        builder: (_) => BookDetailsPage(
+          title: title,
+          color: color,
+          heroTag: heroTag,
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String text) {
+    return Align(
+      alignment: Alignment.topLeft,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20.0, 5.0, 10.0, 5.0),
+        child: Text(text, style: const TextStyle(fontSize: 24)),
+      ),
+    );
+  }
+
+  Widget _horizontalRow({
+    required String prefix,
+    required int count,
+    required double height,
+    required double width,
+    required Color color,
+  }) {
+    return SizedBox(
+      height: height,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: count,
+        padding: const EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 5.0),
+        itemBuilder: (context, index) {
+          final title = "$prefix ${index + 1}";
+          final heroTag = "$prefix-$index";
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10.0),
+            child: SizedBox(
+              width: width,
+              child: StaggeredIn(
+                index: index,
+                child: BookCard(
+                  title: title,
+                  color: color,
+                  heroTag: heroTag,
+                  onTap: () => _openDetails(title, color, heroTag),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text("Catalog"),
+        title: const Text("Catalog"),
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            Align(
-              alignment: Alignment.topLeft,
-              child: Container(
-                padding: EdgeInsets.fromLTRB(20.0,5.0,10.0,5.0),
-                child: Text(
-                  "This Week's Featured Books",
-                  style: TextStyle(fontSize:24),
-                ),
-              )
-            ),
-            SizedBox(
-              // This is required to set a height bound for the horizontal list view
-              // Without a vertical bound, it errors and doesn't render
+            _sectionTitle("This Week's Featured Books"),
+            _horizontalRow(
+              prefix: "Featured Title",
+              count: 10,
               height: 300,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: 10, // Adjust this later to take a dynamic number of books
-                padding: EdgeInsets.fromLTRB(10.0,0.0,10.0,5.0),
-                itemBuilder: (BuildContext context, int index) {
-                  return Container(
-                    width: 180,
-                    margin: EdgeInsets.fromLTRB(10.0,0.0,10.0,0.0),
-                    decoration: BoxDecoration(
-                      color: Color.fromARGB(255,0,100,255),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: Center(
-                      child: Text("Title ${index+1}")
-                    )
-                  );
-                },
-              )
+              width: 180,
+              color: const Color.fromARGB(255, 0, 100, 255),
             ),
-            Divider(height: 20, thickness: 2, indent: 20, endIndent: 20, color: Colors.grey),
-            Align(
-                alignment: Alignment.topLeft,
-                child: Container(
-                  padding: EdgeInsets.fromLTRB(20.0,0.0,10.0,5.0),
-                  child: Text(
-                    "Recommended For You",
-                    style: TextStyle(fontSize:24),
-                  ),
-                )
-            ),
-            SizedBox(
+            const Divider(height: 20, thickness: 2, indent: 20, endIndent: 20),
+            _sectionTitle("Recommended For You"),
+            _horizontalRow(
+              prefix: "Recommended Title",
+              count: 10,
               height: 200,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: 10,
-                padding: EdgeInsets.fromLTRB(10.0,0.0,10.0,5.0),
-                itemBuilder: (BuildContext context, int index) {
-                  return Container(
-                    width:120,
-                    margin: EdgeInsets.fromLTRB(10.0,0.0,10.0,0.0),
-                    decoration: BoxDecoration(
-                      color:Color.fromARGB(255, 138, 101, 236),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: Center(
-                      child: Text("Title ${index+1}")
-                    )
-                  );
-                }
-              )
+              width: 120,
+              color: const Color.fromARGB(255, 138, 101, 236),
             ),
-            Divider(height: 20, thickness: 2, indent: 20, endIndent: 20, color: Colors.grey),
-            Align(
-              alignment: Alignment.topLeft,
-              child: Container(
-                padding: EdgeInsets.fromLTRB(20.0,0.0,10.0,5.0),
-                child: Text(
-                  "Critically Acclaimed",
-                  style: TextStyle(fontSize:24),
-                ),
-              )
-            ),
-            SizedBox(
+            const Divider(height: 20, thickness: 2, indent: 20, endIndent: 20),
+            _sectionTitle("Critically Acclaimed"),
+            _horizontalRow(
+              prefix: "Acclaimed Title",
+              count: 10,
               height: 200,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: 10,
-                padding: EdgeInsets.fromLTRB(10.0,0.0,10.0,5.0),
-                itemBuilder: (BuildContext context, int index) {
-                  return Container(
-                    width:120,
-                    margin: EdgeInsets.fromLTRB(10.0,0.0,10.0,0.0),
-                    decoration: BoxDecoration(
-                      color:Color.fromARGB(255, 143, 239, 111),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: Center(
-                      child: Text("Title ${index+1}")
-                    )
-                  );
-                }
-              )
+              width: 120,
+              color: const Color.fromARGB(255, 143, 239, 111),
             ),
-            SizedBox(
-              height: 75
-            ),
-          ]
-        )
-      )
+            const SizedBox(height: 75),
+          ],
+        ),
+      ),
     );
   }
 }
