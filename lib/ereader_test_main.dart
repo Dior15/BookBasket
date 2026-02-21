@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
-import 'ereader.dart';
+import 'ereader/epub_reader_view.dart';
 
 void main() {
   runApp(const TestApp());
@@ -13,7 +13,7 @@ class TestApp extends StatelessWidget {
 
   Future<Uint8List> _loadEpub() async {
     print("Loading");
-    final bytes = await rootBundle.load('assets/Sigma Male Bible.epub');
+    final bytes = await rootBundle.load('assets/gunslinger.epub');
     print("Loaded bytes: ${bytes.lengthInBytes}");
     return bytes.buffer.asUint8List();
   }
