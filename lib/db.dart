@@ -21,6 +21,9 @@ class DB {
       );
       _isInitialized = true;
     }
+    if (!await _db.isAdmin("admin@bookbasket.com")) { // Inserts demo data if not present in the databases
+      _db.insertDemoData();
+    }
     // await _db.insertDemoData();
     return(DB._db);
   }
