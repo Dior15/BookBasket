@@ -24,10 +24,8 @@ class _PreferencesPageState extends State<PreferencesPage> {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text("Preferences")),
-      body: ListView(
-        children: [
+    return ListView(
+      children: [
           RadioListTile<ThemeType>(
             title: const Text("Light Mode"),
             value: ThemeType.light,
@@ -115,7 +113,6 @@ class _PreferencesPageState extends State<PreferencesPage> {
               ],
             ),
         ],
-      ),
     );
   }
 }

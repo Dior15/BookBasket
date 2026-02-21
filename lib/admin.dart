@@ -7,24 +7,18 @@ class AdminPage extends StatelessWidget
   @override
   Widget build(BuildContext context)
   {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Admin Panel"),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: GridView.count(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          children: const[
-            AdminCard(icon: Icons.book, title: "Manage Books"),
-            AdminCard(icon: Icons.people, title: "Manage Users"),
-            AdminCard(icon: Icons.analytics, title: "Reports"),
-            AdminCard(icon: Icons.settings, title: "System Settings"),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: GridView.count(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        children: const [
+          AdminCard(icon: Icons.book, title: "Manage Books"),
+          AdminCard(icon: Icons.people, title: "Manage Users"),
+          AdminCard(icon: Icons.analytics, title: "Reports"),
+          AdminCard(icon: Icons.settings, title: "System Settings"),
+        ],
       ),
     );
   }

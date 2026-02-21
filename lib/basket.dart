@@ -4,7 +4,6 @@ import 'animations/app_page_route.dart';
 import 'animations/staggered_in.dart';
 import 'animations/book_card.dart';
 import 'animations/book_details_page.dart';
-import 'login_page.dart';
 
 class Basket extends StatefulWidget {
   const Basket({super.key});
@@ -28,31 +27,11 @@ class BasketState extends State<Basket> {
     );
   }
 
-  void _signOut() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => const LoginPage(),
-      ),
-          (route) => false,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     const cardColor = Color.fromARGB(255, 138, 101, 236);
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text("Your Basket"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _signOut,
-          ),
-        ],
-      ),
-      body: GridView.builder(
+    return GridView.builder(
         padding: const EdgeInsets.all(10.0),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
@@ -75,7 +54,7 @@ class BasketState extends State<Basket> {
             ),
           );
         },
-      ),
+
     );
   }
 }

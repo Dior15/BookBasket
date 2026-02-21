@@ -73,12 +73,7 @@ class CatalogState extends State<Catalog> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text("Catalog"),
-      ),
-      body: SingleChildScrollView(
+    return SingleChildScrollView(
         child: Column(
           children: [
             _sectionTitle("This Week's Featured Books"),
@@ -110,7 +105,6 @@ class CatalogState extends State<Catalog> {
             const SizedBox(height: 75),
           ],
         ),
-      ),
     );
   }
 }

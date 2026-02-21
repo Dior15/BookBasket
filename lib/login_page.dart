@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'auth_service.dart';
-import 'basket.dart';
-import 'admin.dart';
 import 'animations/shake.dart';
+import 'navigation/drawer_shell.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -66,7 +65,7 @@ class _LoginPageState extends State<LoginPage> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => admin ? const AdminPage() : const Basket(),
+        builder: (_) => DrawerShell(isAdmin: admin),
       ),
     );
   }
