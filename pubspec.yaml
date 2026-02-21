@@ -36,9 +36,11 @@ dependencies:
   shared_preferences: ^2.2.2
 
   # E-Reader dependencies
-  flutter_html: ^3.0.0-beta.2
+  flutter_html: ^3.0.0
+  html: ^0.15.6
   epub_parser: ^3.0.1
   archive: ^3.4.10
+#  epub_view: ^3.2.0
 
   sqflite: ^2.3.3
 
