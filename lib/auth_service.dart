@@ -1,16 +1,17 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'db.dart';
 
 class AuthService {
   static const _kLoggedIn = 'logged_in';
   static const _kEmail = 'email';
   static const _kIsAdmin = 'is_admin';
 
-  // Demo credentials
+  // Demo credentials - THESE ARE BEING MOVED TO THE DATABASE
   static const String adminEmail = 'admin@bookbasket.com';
   static const String adminPassword = 'admin123';
 
-  static const String userEmail = 'user@bookbasket.com';
-  static const String userPassword = 'user123';
+  static String userEmail = 'user@bookbasket.com';
+  static String userPassword = 'user123';
 
   static Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
@@ -37,15 +38,25 @@ class AuthService {
     bool ok = false;
     bool admin = false;
 
-    if (e == adminEmail && p == adminPassword) {
+    DB db = await DB.getReference();
+
+    if (await db.validateLogin(e, p)) {
       ok = true;
-      admin = true;
-    } else if (e == userEmail && p == userPassword) {
-      ok = true;
-      admin = false;
-    } else {
-      ok = false;
+      userEmail = e;
+      if (await db.isAdmin(e)) {
+        admin = true;
+      }
     }
+
+    // if (e == adminEmail && p == adminPassword) {
+    //   ok = true;
+    //   admin = true;
+    // } else if (e == userEmail && p == userPassword) {
+    //   ok = true;
+    //   admin = false;
+    // } else {
+    //   ok = false;
+    // }
 
     if (!ok) return false;
 
