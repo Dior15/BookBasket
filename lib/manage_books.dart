@@ -68,7 +68,7 @@ class _ManageBooksState extends State<ManageBooks>
               TextField(
                 controller: fileController,
                 decoration: const InputDecoration(
-                  labelText: "PDF / EPUB File Name",
+                  labelText: "EPUB File Name",
                 ),
               ),
             ],
