@@ -7,6 +7,36 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'epub_models.dart';
 import 'epub_parser.dart';
 
+enum ReaderTheme { light, dark, sepia }
+
+class ReaderThemeColors {
+  final Color background;
+  final Color text;
+
+  ReaderThemeColors({required this.background, required this.text});
+
+  static ReaderThemeColors get(ReaderTheme theme) {
+    switch (theme) {
+      case ReaderTheme.dark:
+        return ReaderThemeColors(
+          background: const Color(0xFF121212),
+          text: Colors.white70,
+        );
+      case ReaderTheme.sepia:
+        return ReaderThemeColors(
+          background: const Color(0xFFF4ECD8),
+          text: const Color(0xFF5B4636),
+        );
+      case ReaderTheme.light:
+      default:
+        return ReaderThemeColors(
+          background: Colors.white,
+          text: Colors.black87,
+        );
+    }
+  }
+}
+
 class EpubReaderPage extends StatefulWidget {
   final Uint8List epubBytes;
   const EpubReaderPage({super.key, required this.epubBytes});
@@ -25,11 +55,31 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   PageController? _pageController;
   int _currentPage = 0;
   final EpubParser _parser = EpubParser();
+  ReaderTheme _readerTheme = ReaderTheme.light;
 
   @override
   void initState() {
     super.initState();
+    _loadTheme();
     _prepareBook();
+  }
+
+  Future<void> _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    final themeName = prefs.getString('reader_theme') ?? 'light';
+    if (mounted) {
+      setState(() {
+        _readerTheme = ReaderTheme.values.firstWhere(
+          (e) => e.name == themeName,
+          orElse: () => ReaderTheme.light,
+        );
+      });
+    }
+  }
+
+  Future<void> _saveTheme(ReaderTheme theme) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('reader_theme', theme.name);
   }
 
   Future<void> _prepareBook() async {
@@ -78,9 +128,27 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   Widget build(BuildContext context) {
     if (_error != null) return Scaffold(body: Center(child: Text("Error: $_error")));
 
+    final themeColors = ReaderThemeColors.get(_readerTheme);
+
     return Scaffold(
-      appBar: AppBar(title: Text(_isInitialized ? _sections[_pages[_currentPage].sectionIndex].title : "Loading...")),
-      drawer: _isInitialized ? _buildDrawer() : null,
+      backgroundColor: themeColors.background,
+      appBar: AppBar(
+        title: Text(_isInitialized ? _sections[_pages[_currentPage].sectionIndex].title : "Loading..."),
+        backgroundColor: themeColors.background,
+        foregroundColor: themeColors.text,
+        elevation: 0,
+        actions: [
+          if (_isInitialized)
+            Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.settings),
+                onPressed: () => Scaffold.of(context).openEndDrawer(),
+              ),
+            ),
+        ],
+      ),
+      drawer: _isInitialized ? _buildDrawer(themeColors) : null,
+      endDrawer: _isInitialized ? _buildEndDrawer(themeColors) : null,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -116,6 +184,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   }
 
   Widget _buildPageContent(int index) {
+    final themeColors = ReaderThemeColors.get(_readerTheme);
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 80),
       child: SingleChildScrollView(
@@ -135,7 +204,12 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
             ),
           ],
           style: {
-            "body": Style(fontSize: FontSize(_parser.fontSize), lineHeight: LineHeight(_parser.lineHeight), margin: Margins.zero),
+            "body": Style(
+              fontSize: FontSize(_parser.fontSize),
+              lineHeight: LineHeight(_parser.lineHeight),
+              margin: Margins.zero,
+              color: themeColors.text,
+            ),
             "p": Style(margin: Margins.only(bottom: _parser.paragraphSpacing)),
           },
         ),
@@ -144,18 +218,22 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   }
 
   Widget _buildNavigationArrows() {
+    final themeColors = ReaderThemeColors.get(_readerTheme);
     return Positioned(
       bottom: 10, left: 0, right: 0,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios, size: 20),
+            icon: Icon(Icons.arrow_back_ios, size: 20, color: themeColors.text),
             onPressed: _currentPage > 0 ? () => _pageController?.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut) : null,
           ),
-          Text("Page ${_currentPage + 1} of ${_pages.length}"),
+          Text(
+            "Page ${_currentPage + 1} of ${_pages.length}",
+            style: TextStyle(color: themeColors.text),
+          ),
           IconButton(
-            icon: const Icon(Icons.arrow_forward_ios, size: 20),
+            icon: Icon(Icons.arrow_forward_ios, size: 20, color: themeColors.text),
             onPressed: _currentPage < _pages.length - 1 ? () => _pageController?.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut) : null,
           ),
         ],
@@ -163,15 +241,16 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     );
   }
 
-  Widget _buildDrawer() {
+  Widget _buildDrawer(ReaderThemeColors themeColors) {
     return Drawer(
+      backgroundColor: themeColors.background,
       child: ListView.builder(
         itemCount: _sections.length,
         itemBuilder: (context, index) {
           final s = _sections[index];
           return ListTile(
             contentPadding: EdgeInsets.only(left: 16 + (s.depth * 16.0)),
-            title: Text(s.title),
+            title: Text(s.title, style: TextStyle(color: themeColors.text)),
             onTap: () {
               final pIndex = _pages.indexWhere((p) => p.sectionIndex == index);
               if (pIndex != -1) _pageController?.jumpToPage(pIndex);
@@ -179,6 +258,74 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
             },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildEndDrawer(ReaderThemeColors themeColors) {
+    return Drawer(
+      backgroundColor: themeColors.background,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                "Reader Settings",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: themeColors.text,
+                ),
+              ),
+            ),
+            Divider(color: themeColors.text.withOpacity(0.2)),
+            ListTile(
+              title: Text("Theme", style: TextStyle(color: themeColors.text)),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _themeButton(ReaderTheme.light, Colors.white, Colors.black),
+                    _themeButton(ReaderTheme.dark, Colors.black, Colors.white),
+                    _themeButton(ReaderTheme.sepia, const Color(0xFFF4ECD8), const Color(0xFF5B4636)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _themeButton(ReaderTheme theme, Color bg, Color text) {
+    bool isSelected = _readerTheme == theme;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _readerTheme = theme);
+        _saveTheme(theme);
+      },
+      child: Container(
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          color: bg,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isSelected ? Colors.blue : Colors.grey.withOpacity(0.5),
+            width: isSelected ? 3 : 1,
+          ),
+          boxShadow: isSelected ? [BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 4, spreadRadius: 2)] : null,
+        ),
+        child: Center(
+          child: Text(
+            "A",
+            style: TextStyle(color: text, fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+        ),
       ),
     );
   }

@@ -55,8 +55,6 @@ class CatalogState extends State<Catalog> {
             padding: const EdgeInsets.symmetric(horizontal: 10.0),
             child: SizedBox(
               width: width,
-              child: StaggeredIn(
-                index: index,
                 child: BookCard(
                   title: title,
                   color: color,
@@ -64,7 +62,6 @@ class CatalogState extends State<Catalog> {
                   onTap: () => _openDetails(title, color, heroTag),
                 ),
               ),
-            ),
           );
         },
       ),
