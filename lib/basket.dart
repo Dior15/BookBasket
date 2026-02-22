@@ -44,14 +44,11 @@ class BasketState extends State<Basket> {
           final title = _items[index];
           final heroTag = "basket-$index";
 
-          return StaggeredIn(
-            index: index,
-            child: BookCard(
-              title: title,
-              color: cardColor,
-              heroTag: heroTag,
-              onTap: () => _openDetails(title, cardColor, heroTag),
-            ),
+          return BookCard(
+            title: title,
+            color: cardColor,
+            heroTag: heroTag,
+            onTap: () => _openDetails(title, cardColor, heroTag),
           );
         },
 
