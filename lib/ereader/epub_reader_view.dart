@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'epub_models.dart';
 import 'epub_parser.dart';
+import '../animations/page_flip.dart'; // Make sure to import the new file
 
 enum ReaderTheme { light, dark, sepia }
 
@@ -70,7 +71,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     if (mounted) {
       setState(() {
         _readerTheme = ReaderTheme.values.firstWhere(
-          (e) => e.name == themeName,
+              (e) => e.name == themeName,
           orElse: () => ReaderTheme.light,
         );
       });
@@ -159,9 +160,12 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
             if (!_isInitialized) return const Center(child: CircularProgressIndicator());
 
             return Stack(
+              clipBehavior: Clip.none,
               children: [
-                PageView.builder(
-                  controller: _pageController,
+                // Cleanly utilize the isolated animation component here
+                PageFlipView(
+                  controller: _pageController!,
+                  currentPage: _currentPage,
                   itemCount: _pages.length,
                   onPageChanged: (i) {
                     setState(() => _currentPage = i);
@@ -186,8 +190,10 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   Widget _buildPageContent(int index) {
     final themeColors = ReaderThemeColors.get(_readerTheme);
     return Container(
+      color: themeColors.background,
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 80),
       child: SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
         child: Html(
           data: _pages[index].html,
           extensions: [
@@ -211,6 +217,9 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
               color: themeColors.text,
             ),
             "p": Style(margin: Margins.only(bottom: _parser.paragraphSpacing)),
+            "h1": Style(color: themeColors.text),
+            "h2": Style(color: themeColors.text),
+            "h3": Style(color: themeColors.text),
           },
         ),
       ),
@@ -226,7 +235,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
         children: [
           IconButton(
             icon: Icon(Icons.arrow_back_ios, size: 20, color: themeColors.text),
-            onPressed: _currentPage > 0 ? () => _pageController?.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut) : null,
+            onPressed: _currentPage > 0 ? () => _pageController?.previousPage(duration: const Duration(milliseconds: 500), curve: Curves.easeOutQuad) : null,
           ),
           Text(
             "Page ${_currentPage + 1} of ${_pages.length}",
@@ -234,7 +243,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
           ),
           IconButton(
             icon: Icon(Icons.arrow_forward_ios, size: 20, color: themeColors.text),
-            onPressed: _currentPage < _pages.length - 1 ? () => _pageController?.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut) : null,
+            onPressed: _currentPage < _pages.length - 1 ? () => _pageController?.nextPage(duration: const Duration(milliseconds: 500), curve: Curves.easeOutQuad) : null,
           ),
         ],
       ),
