@@ -29,7 +29,104 @@ class CatalogState extends State<Catalog> {
       alignment: Alignment.topLeft,
       child: Container(
         padding: const EdgeInsets.fromLTRB(20.0, 5.0, 10.0, 5.0),
-        child: Text(text, style: const TextStyle(fontSize: 24)),
+        child: Text(text, style: const TextStyle(fontSize: 20)),
+      ),
+    );
+  }
+
+  // ── Hero banner at the top ────────────────────────────────────────────────
+  Widget _heroBanner() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      height: 120,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF1A237E), // deep indigo
+            Color(0xFF283593),
+            Color(0xFF3949AB),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1A237E).withOpacity(0.4),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // decorative circles
+          Positioned(
+            right: -20,
+            top: -20,
+            child: Container(
+              width: 130,
+              height: 130,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.07),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -10,
+            bottom: -30,
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.05),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Text(
+                  'Welcome to BookBasket',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Discover your next great read',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            right: 20,
+            top: 0,
+            bottom: 0,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Icon(
+                Icons.auto_stories_rounded,
+                size: 54,
+                color: Colors.white.withOpacity(0.18),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -73,7 +170,8 @@ class CatalogState extends State<Catalog> {
     return SingleChildScrollView(
         child: Column(
           children: [
-            _sectionTitle("This Week's Featured Books"),
+            _heroBanner(),
+            _sectionTitle("This Week's Featured"),
             _horizontalRow(
               prefix: "Featured Title",
               count: 10,
