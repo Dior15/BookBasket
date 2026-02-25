@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'manage_books.dart';
-import 'manage_users.dart';
-import 'reports.dart';
-import 'system_settings.dart';
+import 'admin_pages/manage_books.dart';
+import 'admin_pages/manage_users.dart';
+import 'admin_pages/reports.dart';
+import 'admin_pages/system_settings.dart';
 
 class AdminPage extends StatelessWidget {
   const AdminPage({super.key});
