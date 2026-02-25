@@ -119,42 +119,46 @@ class _ReportsState extends State<Reports> {
                   margin: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 8),
                   child: ListTile(
+                    isThreeLine: true,
                     leading: const Icon(Icons.report_problem,
                         color: Colors.deepPurple),
-                    title: Text(report.issue),
+                    title: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            report.issue,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _statusColor(report.status),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            report.status,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 11),
+                          ),
+                        ),
+                      ],
+                    ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const SizedBox(height: 4),
                         Text("User: ${report.userName}"),
                         if (report.bookTitle != null)
                           Text("Book: ${report.bookTitle}"),
                       ],
                     ),
-                    trailing: Column(
-                      mainAxisAlignment:
-                      MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _statusColor(report.status),
-                            borderRadius:
-                            BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            report.status,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        IconButton(
-                          icon: const Icon(Icons.check),
-                          onPressed: () => _toggleStatus(index),
-                        ),
-                      ],
+                    trailing: IconButton(
+                      icon: const Icon(Icons.check_circle_outline),
+                      onPressed: () => _toggleStatus(index),
+                      tooltip: 'Mark as Resolved/Pending',
                     ),
                   ),
                 );
