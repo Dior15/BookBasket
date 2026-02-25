@@ -1,31 +1,38 @@
 import 'package:flutter/material.dart';
 
-class AdminPage extends StatelessWidget
-{
+import 'manage_books.dart';
+import 'manage_users.dart';
+import 'reports.dart';
+import 'system_settings.dart';
+
+class AdminPage extends StatelessWidget {
   const AdminPage({super.key});
 
   @override
-  Widget build(BuildContext context)
-  {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: GridView.count(
-        crossAxisCount: 2,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        children: const [
-          AdminCard(icon: Icons.book, title: "Manage Books"),
-          AdminCard(icon: Icons.people, title: "Manage Users"),
-          AdminCard(icon: Icons.analytics, title: "Reports"),
-          AdminCard(icon: Icons.settings, title: "System Settings"),
-        ],
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Admin Dashboard"),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: GridView.count(
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          children: const [
+            AdminCard(icon: Icons.book, title: "Manage Books"),
+            AdminCard(icon: Icons.people, title: "Manage Users"),
+            AdminCard(icon: Icons.analytics, title: "Reports"),
+            AdminCard(icon: Icons.settings, title: "System Settings"),
+          ],
+        ),
       ),
     );
   }
 }
 
-class AdminCard extends StatelessWidget
-{
+class AdminCard extends StatelessWidget {
   final IconData icon;
   final String title;
 
@@ -36,8 +43,7 @@ class AdminCard extends StatelessWidget
   });
 
   @override
-  Widget build(BuildContext context)
-  {
+  Widget build(BuildContext context) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -45,7 +51,40 @@ class AdminCard extends StatelessWidget
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap:(/* Todo: Implement this on the next part*/) {},
+        onTap: () {
+          if (title == "Manage Books") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ManageBooks(),
+              ),
+            );
+          }
+          else if (title == "Manage Users") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ManageUsers(),
+              ),
+            );
+          }
+          else if (title == "Reports") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const Reports(),
+              ),
+            );
+          }
+          else if (title == "System Settings") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SystemSettings(),
+              ),
+            );
+          }
+        },
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
