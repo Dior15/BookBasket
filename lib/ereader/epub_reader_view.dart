@@ -146,6 +146,12 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
                 onPressed: () => Scaffold.of(context).openEndDrawer(),
               ),
             ),
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.pop(context)
+            ),
+          )
         ],
       ),
       drawer: _isInitialized ? _buildDrawer(themeColors) : null,
