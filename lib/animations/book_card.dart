@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import "dart:io";
 
 class BookCard extends StatefulWidget {
   final String title;
@@ -73,14 +74,15 @@ class _BookCardState extends State<BookCard> {
               Center(
                 child: Padding(
                   padding: const EdgeInsets.all(10),
-                  child: Text(
-                    widget.title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
+                  // child: Text(
+                  //   widget.title,
+                  //   textAlign: TextAlign.center,
+                  //   style: const TextStyle(
+                  //     fontWeight: FontWeight.w700,
+                  //     color: Colors.white,
+                  //   ),
+                  // ),
+                  child: Image.asset(widget.title)
                 ),
               ),
             ],

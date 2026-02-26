@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import "dart:io";
+import 'package:epub_parser/epub_parser.dart' hide Image;
 
 import 'auth_service.dart';
 import 'login_page.dart';
@@ -7,13 +9,17 @@ import 'navigation/drawer_shell.dart';
 import 'themes/theme_builder.dart';
 import 'themes/theme_notifier.dart';
 
-void main() {
+void main() async {
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeNotifier(),
       child: const BookBasketApp(),
     ),
   );
+}
+
+void getBookCovers() async {
+
 }
 
 class BookBasketApp extends StatelessWidget {

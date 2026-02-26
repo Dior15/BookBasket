@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:epub_parser/epub_parser.dart' hide Image;
+import 'package:path/path.dart' as p;
 
 import 'animations/app_page_route.dart';
 import 'animations/staggered_in.dart';
 import 'animations/book_card.dart';
 import 'animations/book_details_page.dart';
+import 'ereader/epub_loader.dart';
 
 class Basket extends StatefulWidget {
   const Basket({super.key});
@@ -13,7 +16,13 @@ class Basket extends StatefulWidget {
 }
 
 class BasketState extends State<Basket> {
-  final List<String> _items = List.generate(15, (i) => "Title ${i + 1}");
+  final List<String> _items =
+  [
+    "An Omega For Dylan.epub",
+    "gunslinger.epub",
+    "My Baby Mama Is A Loser.epub",
+    "Under The Dome.epub",
+  ];
 
   void _openDetails(String title, Color color, String heroTag) {
     Navigator.of(context).push(
@@ -44,11 +53,20 @@ class BasketState extends State<Basket> {
           final title = _items[index];
           final heroTag = "basket-$index";
 
+          // List<int> bytes = targetFile.readAsBytes();
+
+
+          // Opens a book and reads all of its content into memory
+//           EpubBook epubBook = await EpubReader.readBook(bytes);
+
           return BookCard(
             title: title,
             color: cardColor,
             heroTag: heroTag,
-            onTap: () => _openDetails(title, cardColor, heroTag),
+            onTap: () => Navigator.push(
+              context, 
+              MaterialPageRoute(builder: (_) => EpubLoaderPage(epubAssetPath: "assets/books/${_items[index]}",))
+            ),
           );
         },
 

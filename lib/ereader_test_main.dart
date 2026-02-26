@@ -13,7 +13,7 @@ class TestApp extends StatelessWidget {
 
   Future<Uint8List> _loadEpub() async {
     print("Loading");
-    final bytes = await rootBundle.load('assets/books/The Waste Lands.epub');
+    final bytes = await rootBundle.load('assets/books/Under The Dome.epub');
 
     print("Loaded bytes: ${bytes.lengthInBytes}");
     return bytes.buffer.asUint8List();
