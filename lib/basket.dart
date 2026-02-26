@@ -22,6 +22,8 @@ class BasketState extends State<Basket> {
     "gunslinger.epub",
     "My Baby Mama Is A Loser.epub",
     "Under The Dome.epub",
+    "It Ends With Us.epub",
+    "Twelve Angry Men.epub"
   ];
 
   void _openDetails(String title, Color color, String heroTag) {
@@ -38,7 +40,8 @@ class BasketState extends State<Basket> {
 
   @override
   Widget build(BuildContext context) {
-    const cardColor = Color.fromARGB(255, 138, 101, 236);
+    // const cardColor = Color.fromARGB(255, 138, 101, 236);
+    const cardColor = Color.fromARGB(10, 0, 0, 0);
 
     return GridView.builder(
         padding: const EdgeInsets.all(10.0),
@@ -46,7 +49,7 @@ class BasketState extends State<Basket> {
           crossAxisCount: 3,
           crossAxisSpacing: 8,
           mainAxisSpacing: 8,
-          childAspectRatio: 0.6,
+          childAspectRatio: 0.6666,
         ),
         itemCount: _items.length,
         itemBuilder: (context, index) {

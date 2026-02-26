@@ -1,11 +1,13 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+import '../ereader/cover_loader.dart';
 
-class BookDetailsPage extends StatelessWidget {
+class BookDetailsPage extends StatelessWidget with CoverLoader{
   final String title;
   final Color color;
   final String heroTag;
 
-  const BookDetailsPage({
+  BookDetailsPage({
     super.key,
     required this.title,
     required this.color,
@@ -30,14 +32,39 @@ class BookDetailsPage extends StatelessWidget {
                   child: Container(
                     color: color,
                     child: Center(
-                      child: Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
+                      child: FutureBuilder<Uint8List?>(
+                        future: loadEpubCover(title), // title = filename
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const SizedBox(
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2
+                                ),
+                              ),
+                            );
+                          }
+                          final cover = snapshot.data;
+                          if (cover == null) {
+                            return const SizedBox(
+                              width: 80,
+                              height: 120,
+                              child: Center(
+                                child: Text(
+                                  "No cover",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            );
+                          }
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.memory(
+                              cover,
+                              fit: BoxFit.cover,
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),

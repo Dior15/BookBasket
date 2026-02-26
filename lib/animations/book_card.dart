@@ -1,25 +1,31 @@
 import 'package:flutter/material.dart';
 import "dart:io";
 
+import 'package:epub_parser/epub_parser.dart' hide Image;
+import 'package:flutter/services.dart';
+import '../ereader/cover_loader.dart';
+
 class BookCard extends StatefulWidget {
   final String title;
   final Color color;
   final VoidCallback? onTap;
   final String heroTag; // for Hero transition
+  final cover;
 
-  const BookCard({
+  BookCard({
     super.key,
     required this.title,
     required this.color,
     required this.heroTag,
     this.onTap,
+    this.cover,
   });
 
   @override
   State<BookCard> createState() => _BookCardState();
 }
 
-class _BookCardState extends State<BookCard> {
+class _BookCardState extends State<BookCard> with CoverLoader{
   bool _pressed = false;
 
   @override
@@ -73,7 +79,7 @@ class _BookCardState extends State<BookCard> {
               ),
               Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(5),
                   // child: Text(
                   //   widget.title,
                   //   textAlign: TextAlign.center,
@@ -82,7 +88,40 @@ class _BookCardState extends State<BookCard> {
                   //     color: Colors.white,
                   //   ),
                   // ),
-                  child: Image.asset(widget.title)
+                  child: FutureBuilder<Uint8List?>(
+                    future: loadEpubCover(widget.title), // widget.title = filename
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return const SizedBox(
+                          child: Center(
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2
+                            ),
+                          ),
+                        );
+                      }
+                      final cover = snapshot.data;
+                      if (cover == null) {
+                        return const SizedBox(
+                          width: 80,
+                          height: 120,
+                          child: Center(
+                            child: Text(
+                              "No cover",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        );
+                      }
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.memory(
+                          cover,
+                          fit: BoxFit.cover,
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
             ],

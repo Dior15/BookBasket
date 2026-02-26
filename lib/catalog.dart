@@ -3,6 +3,7 @@ import 'animations/app_page_route.dart';
 import 'animations/staggered_in.dart';
 import 'animations/book_details_page.dart';
 import 'animations/book_card.dart';
+import 'ereader/cover_loader.dart';
 
 class Catalog extends StatefulWidget {
   const Catalog({super.key});
@@ -11,7 +12,19 @@ class Catalog extends StatefulWidget {
   State<StatefulWidget> createState() => CatalogState();
 }
 
-class CatalogState extends State<Catalog> {
+class CatalogState extends State<Catalog> with CoverLoader{
+  final List<String> _items = [
+    "An Omega For Dylan.epub",
+    "Camp X.epub",
+    "Cruel Mate.epub",
+    "Fantastic 4 Rise of the Silver Surfer.epub",
+    "gunslinger.epub",
+    "It Ends With Us.epub",
+    "My Baby Mama Is A Loser.epub",
+    "Twelve Angry Men.epub",
+    "Under The Dome.epub",
+  ];
+
   void _openDetails(String title, Color color, String heroTag) {
     Navigator.of(context).push(
       AppPageRoute(
@@ -142,11 +155,14 @@ class CatalogState extends State<Catalog> {
       height: height,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: count,
+        itemCount: _items.length,
         padding: const EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 5.0),
         itemBuilder: (context, index) {
-          final title = "$prefix ${index + 1}";
+          final title = _items[index];
           final heroTag = "$prefix-$index";
+          // final heroTag = _items[index];
+
+          final cover = loadEpubCover(title);
 
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10.0),
@@ -157,6 +173,7 @@ class CatalogState extends State<Catalog> {
                   color: color,
                   heroTag: heroTag,
                   onTap: () => _openDetails(title, color, heroTag),
+                  cover: cover,
                 ),
               ),
           );
@@ -175,7 +192,7 @@ class CatalogState extends State<Catalog> {
             _horizontalRow(
               prefix: "Featured Title",
               count: 10,
-              height: 300,
+              height: 270,
               width: 180,
               color: const Color.fromARGB(255, 0, 100, 255),
             ),
@@ -184,7 +201,7 @@ class CatalogState extends State<Catalog> {
             _horizontalRow(
               prefix: "Recommended Title",
               count: 10,
-              height: 200,
+              height: 180,
               width: 120,
               color: const Color.fromARGB(255, 138, 101, 236),
             ),
@@ -193,7 +210,7 @@ class CatalogState extends State<Catalog> {
             _horizontalRow(
               prefix: "Acclaimed Title",
               count: 10,
-              height: 200,
+              height: 180,
               width: 120,
               color: const Color.fromARGB(255, 143, 239, 111),
             ),
