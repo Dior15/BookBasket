@@ -14,15 +14,16 @@ class Catalog extends StatefulWidget {
 
 class CatalogState extends State<Catalog> with CoverLoader{
   final List<String> _items = [
-    "An Omega For Dylan.epub",
-    "Camp X.epub",
-    "Cruel Mate.epub",
-    "Fantastic 4 Rise of the Silver Surfer.epub",
-    "gunslinger.epub",
+    "The Gunslinger.epub",
     "It Ends With Us.epub",
+    "Camp X.epub",
+    "Fantastic 4 Rise of the Silver Surfer.epub",
     "My Baby Mama Is A Loser.epub",
+    "Cruel Mate.epub",
     "Twelve Angry Men.epub",
+    "An Omega For Dylan.epub",
     "Under The Dome.epub",
+    "Sisters.epub",
   ];
 
   void _openDetails(String title, Color color, String heroTag) {

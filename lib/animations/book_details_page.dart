@@ -17,7 +17,7 @@ class BookDetailsPage extends StatelessWidget with CoverLoader{
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(title: Text(title.substring(0, title.length-5))), //removes .epub suffix
       body: Column(
         children: [
           const SizedBox(height: 14),
@@ -79,7 +79,7 @@ class BookDetailsPage extends StatelessWidget with CoverLoader{
               opacity: 1,
               duration: const Duration(milliseconds: 450),
               child: Text(
-                'Details page placeholder for "$title".\n\n'
+                'Details page placeholder for "${title.substring(0, title.length-5)}".\n\n'
                     'This is where your description, author, rating, and Add to Basket button would go.',
                 textAlign: TextAlign.center,
               ),

@@ -125,6 +125,40 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     if (mounted) setState(() => _isInitialized = true);
   }
 
+  // --- CHAPTER NAVIGATION LOGIC ---
+  void _jumpToPreviousChapter() {
+    if (_pages.isEmpty) return;
+
+    int currentSection = _pages[_currentPage].sectionIndex;
+    int firstPageOfCurrentChapter = _pages.indexWhere((p) => p.sectionIndex == currentSection);
+
+    // If we are past the first page of the current chapter, jump back to the start of this chapter
+    if (_currentPage > firstPageOfCurrentChapter) {
+      _pageController?.jumpToPage(firstPageOfCurrentChapter);
+    }
+    // Otherwise, we are already at the start, so jump to the start of the previous chapter
+    else if (currentSection > 0) {
+      int prevChapterPageIndex = _pages.indexWhere((p) => p.sectionIndex == currentSection - 1);
+      if (prevChapterPageIndex != -1) {
+        _pageController?.jumpToPage(prevChapterPageIndex);
+      }
+    }
+  }
+
+  void _jumpToNextChapter() {
+    if (_pages.isEmpty) return;
+
+    int currentSection = _pages[_currentPage].sectionIndex;
+    int nextChapterPageIndex = _pages.indexWhere((p) => p.sectionIndex > currentSection);
+
+    if (nextChapterPageIndex != -1) {
+      _pageController?.jumpToPage(nextChapterPageIndex);
+    } else {
+      // If there are no more chapters, just jump to the very last page
+      _pageController?.jumpToPage(_pages.length - 1);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_error != null) return Scaffold(body: Center(child: Text("Error: $_error")));
@@ -148,8 +182,8 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
             ),
           Builder(
             builder: (context) => IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.pop(context)
+                icon: const Icon(Icons.shopping_basket),
+                onPressed: () => Navigator.pop(context)
             ),
           )
         ],
@@ -179,6 +213,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
                   },
                   itemBuilder: (context, index) => _buildPageContent(index),
                 ),
+                _buildTapZones(), // Our invisible tap zones!
                 _buildNavigationArrows(),
               ],
             );
@@ -191,6 +226,50 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   Future<void> _saveProgress(int index) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('epub_pos_${_title!.hashCode}', index);
+  }
+
+  Widget _buildTapZones() {
+    return Positioned.fill(
+      child: Row(
+        children: [
+          // Left Tap Zone (25% of the screen)
+          Expanded(
+            flex: 1,
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () {
+                if (_currentPage > 0) {
+                  _pageController?.previousPage(
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeOutQuad,
+                  );
+                }
+              },
+            ),
+          ),
+          // Center Safe Zone (50% of the screen)
+          const Expanded(
+            flex: 2,
+            child: IgnorePointer(), // Ensures middle screen interactions (links) work
+          ),
+          // Right Tap Zone (25% of the screen)
+          Expanded(
+            flex: 1,
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () {
+                if (_currentPage < _pages.length - 1) {
+                  _pageController?.nextPage(
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeOutQuad,
+                  );
+                }
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildPageContent(int index) {
@@ -242,16 +321,16 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           IconButton(
-            icon: Icon(Icons.arrow_back_ios, size: 20, color: themeColors.text),
-            onPressed: _currentPage > 0 ? () => _pageController?.previousPage(duration: const Duration(milliseconds: 500), curve: Curves.easeOutQuad) : null,
+            icon: Icon(Icons.skip_previous, size: 24, color: themeColors.text),
+            onPressed: _currentPage > 0 ? _jumpToPreviousChapter : null,
           ),
           Text(
             "Page ${_currentPage + 1} of ${_pages.length}",
             style: TextStyle(color: themeColors.text),
           ),
           IconButton(
-            icon: Icon(Icons.arrow_forward_ios, size: 20, color: themeColors.text),
-            onPressed: _currentPage < _pages.length - 1 ? () => _pageController?.nextPage(duration: const Duration(milliseconds: 500), curve: Curves.easeOutQuad) : null,
+            icon: Icon(Icons.skip_next, size: 24, color: themeColors.text),
+            onPressed: _currentPage < _pages.length - 1 ? _jumpToNextChapter : null,
           ),
         ],
       ),

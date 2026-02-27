@@ -18,12 +18,16 @@ class Basket extends StatefulWidget {
 class BasketState extends State<Basket> {
   final List<String> _items =
   [
-    "An Omega For Dylan.epub",
-    "gunslinger.epub",
-    "My Baby Mama Is A Loser.epub",
-    "Under The Dome.epub",
+    "The Gunslinger.epub",
     "It Ends With Us.epub",
-    "Twelve Angry Men.epub"
+    "Camp X.epub",
+    "Fantastic 4 Rise of the Silver Surfer.epub",
+    "My Baby Mama Is A Loser.epub",
+    "Cruel Mate.epub",
+    "Twelve Angry Men.epub",
+    "An Omega For Dylan.epub",
+    "Under The Dome.epub",
+    "Sisters.epub",
   ];
 
   void _openDetails(String title, Color color, String heroTag) {
