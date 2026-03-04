@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
@@ -6,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'epub_models.dart';
 import 'epub_parser.dart';
-import '../animations/page_flip.dart'; // Make sure to import the new file
+import '../animations/page_flip.dart';
 
 enum ReaderTheme { light, dark, sepia }
 
@@ -53,26 +54,39 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   List<EpubPage> _pages = [];
   final Map<String, Uint8List> _images = {};
 
+  // FIX: Added the map to hold true dimensions
+  final Map<String, Size> _imageSizes = {};
+
   PageController? _pageController;
   int _currentPage = 0;
-  final EpubParser _parser = EpubParser();
+
+  EpubParser _parser = EpubParser();
   ReaderTheme _readerTheme = ReaderTheme.light;
+
+  String _fontFamily = 'System Default';
 
   @override
   void initState() {
     super.initState();
-    _loadTheme();
+    _loadSettings();
     _prepareBook();
   }
 
-  Future<void> _loadTheme() async {
+  Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final themeName = prefs.getString('reader_theme') ?? 'light';
+    final savedFontFamily = prefs.getString('reader_font_family') ?? 'System Default';
+
     if (mounted) {
       setState(() {
         _readerTheme = ReaderTheme.values.firstWhere(
               (e) => e.name == themeName,
           orElse: () => ReaderTheme.light,
+        );
+        _fontFamily = savedFontFamily;
+
+        _parser = EpubParser(
+          fontFamily: _fontFamily == 'System Default' ? null : _fontFamily,
         );
       });
     }
@@ -83,14 +97,30 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     await prefs.setString('reader_theme', theme.name);
   }
 
+  Future<void> _saveFontFamily(String family) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('reader_font_family', family);
+  }
+
   Future<void> _prepareBook() async {
     try {
       final book = await EpubReader.readBook(widget.epubBytes);
-      _title = book.Title ?? "EPUB Reader";
+
       book.Content?.Images?.forEach((k, v) {
         if (v.Content != null) _images[k] = Uint8List.fromList(v.Content!);
       });
+
+      // FIX: Decode the images asynchronously so the parser knows exactly how big they are
+      for (var entry in _images.entries) {
+        final decodedImage = await decodeImageFromList(entry.value);
+        _imageSizes[entry.key] = Size(decodedImage.width.toDouble(), decodedImage.height.toDouble());
+      }
+
       _extractSections(book.Chapters ?? []);
+
+      // Assign title last to prevent premature pagination builds
+      _title = book.Title ?? "EPUB Reader";
+
       if (mounted) setState(() {});
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
@@ -109,12 +139,22 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   Future<void> _initializeReader(BoxConstraints constraints) async {
     if (_isInitialized || _title == null) return;
 
-    _pages = _parser.paginate(
-      sections: _sections,
-      maxHeight: constraints.maxHeight,
-      maxWidth: constraints.maxWidth,
-      horizontalPadding: 24.0,
-    );
+    List<EpubPage> newPages = [];
+
+    for (int i = 0; i < _sections.length; i++) {
+      final chunk = _parser.paginate(
+        sections: [_sections[i]],
+        maxHeight: constraints.maxHeight - 57.0,
+        maxWidth: constraints.maxWidth,
+        horizontalPadding: 24.0,
+        imageSizes: _imageSizes, // FIX: Pass the sizes map into the parser
+      );
+
+      newPages.addAll(chunk.map((p) => EpubPage(html: p.html, sectionIndex: i)));
+      await Future.delayed(Duration.zero);
+    }
+
+    _pages = newPages;
 
     final prefs = await SharedPreferences.getInstance();
     final savedPage = prefs.getInt('epub_pos_${_title!.hashCode}') ?? 0;
@@ -125,19 +165,39 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     if (mounted) setState(() => _isInitialized = true);
   }
 
-  // --- CHAPTER NAVIGATION LOGIC ---
+  void _changeFontFamily(String newFamily) {
+    if (!_isInitialized || _fontFamily == newFamily) return;
+
+    int currentSection = _pages.isNotEmpty ? _pages[_currentPage].sectionIndex : 0;
+
+    setState(() {
+      _fontFamily = newFamily;
+
+      _parser = EpubParser(
+        fontFamily: newFamily == 'System Default' ? null : newFamily,
+      );
+
+      _isInitialized = false;
+    });
+
+    _saveFontFamily(newFamily);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      int fallbackIndex = _pages.indexWhere((p) => p.sectionIndex == currentSection);
+      if (fallbackIndex == -1) fallbackIndex = 0;
+      await prefs.setInt('epub_pos_${_title!.hashCode}', fallbackIndex);
+    });
+  }
+
   void _jumpToPreviousChapter() {
     if (_pages.isEmpty) return;
-
     int currentSection = _pages[_currentPage].sectionIndex;
     int firstPageOfCurrentChapter = _pages.indexWhere((p) => p.sectionIndex == currentSection);
 
-    // If we are past the first page of the current chapter, jump back to the start of this chapter
     if (_currentPage > firstPageOfCurrentChapter) {
       _pageController?.jumpToPage(firstPageOfCurrentChapter);
-    }
-    // Otherwise, we are already at the start, so jump to the start of the previous chapter
-    else if (currentSection > 0) {
+    } else if (currentSection > 0) {
       int prevChapterPageIndex = _pages.indexWhere((p) => p.sectionIndex == currentSection - 1);
       if (prevChapterPageIndex != -1) {
         _pageController?.jumpToPage(prevChapterPageIndex);
@@ -147,14 +207,12 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
 
   void _jumpToNextChapter() {
     if (_pages.isEmpty) return;
-
     int currentSection = _pages[_currentPage].sectionIndex;
     int nextChapterPageIndex = _pages.indexWhere((p) => p.sectionIndex > currentSection);
 
     if (nextChapterPageIndex != -1) {
       _pageController?.jumpToPage(nextChapterPageIndex);
     } else {
-      // If there are no more chapters, just jump to the very last page
       _pageController?.jumpToPage(_pages.length - 1);
     }
   }
@@ -168,7 +226,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     return Scaffold(
       backgroundColor: themeColors.background,
       appBar: AppBar(
-        title: Text(_isInitialized ? _sections[_pages[_currentPage].sectionIndex].title : "Loading..."),
+        title: Text(_isInitialized && _pages.isNotEmpty ? _sections[_pages[_currentPage].sectionIndex].title : "Loading..."),
         backgroundColor: themeColors.background,
         foregroundColor: themeColors.text,
         elevation: 0,
@@ -182,7 +240,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
             ),
           Builder(
             builder: (context) => IconButton(
-                icon: const Icon(Icons.shopping_basket),
+                icon: const Icon(Icons.arrow_back),
                 onPressed: () => Navigator.pop(context)
             ),
           )
@@ -202,7 +260,6 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
             return Stack(
               clipBehavior: Clip.none,
               children: [
-                // Cleanly utilize the isolated animation component here
                 PageFlipView(
                   controller: _pageController!,
                   currentPage: _currentPage,
@@ -213,7 +270,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
                   },
                   itemBuilder: (context, index) => _buildPageContent(index),
                 ),
-                _buildTapZones(), // Our invisible tap zones!
+                _buildTapZones(),
                 _buildNavigationArrows(),
               ],
             );
@@ -232,7 +289,6 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     return Positioned.fill(
       child: Row(
         children: [
-          // Left Tap Zone (25% of the screen)
           Expanded(
             flex: 1,
             child: GestureDetector(
@@ -247,12 +303,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
               },
             ),
           ),
-          // Center Safe Zone (50% of the screen)
-          const Expanded(
-            flex: 2,
-            child: IgnorePointer(), // Ensures middle screen interactions (links) work
-          ),
-          // Right Tap Zone (25% of the screen)
+          const Expanded(flex: 2, child: IgnorePointer()),
           Expanded(
             flex: 1,
             child: GestureDetector(
@@ -273,6 +324,8 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   }
 
   Widget _buildPageContent(int index) {
+    if (_pages.isEmpty) return const SizedBox.shrink(); // Safety check
+
     final themeColors = ReaderThemeColors.get(_readerTheme);
     return Container(
       width: double.infinity,
@@ -290,7 +343,19 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
                 String? src = ctx.attributes['src'];
                 if (src != null) {
                   final imageData = _images[src] ?? _images[src.split('/').last];
-                  if (imageData != null) return Image.memory(imageData);
+                  if (imageData != null) {
+                    return SizedBox(
+                      width: double.infinity,
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxHeight: 400.0,
+                          ),
+                          child: Image.memory(imageData),
+                        ),
+                      ),
+                    );
+                  }
                 }
                 return const SizedBox.shrink();
               },
@@ -298,6 +363,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
           ],
           style: {
             "body": Style(
+              fontFamily: _fontFamily == 'System Default' ? null : _fontFamily,
               fontSize: FontSize(_parser.fontSize),
               lineHeight: LineHeight(_parser.lineHeight),
               margin: Margins.zero,
@@ -325,7 +391,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
             onPressed: _currentPage > 0 ? _jumpToPreviousChapter : null,
           ),
           Text(
-            "Page ${_currentPage + 1} of ${_pages.length}",
+            _pages.isNotEmpty ? "Page ${_currentPage + 1} of ${_pages.length}" : "Loading...",
             style: TextStyle(color: themeColors.text),
           ),
           IconButton(
@@ -377,6 +443,35 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
               ),
             ),
             Divider(color: themeColors.text.withOpacity(0.2)),
+
+            ListTile(
+              title: Text("Font", style: TextStyle(color: themeColors.text)),
+              trailing: DropdownButton<String>(
+                value: _fontFamily,
+                dropdownColor: themeColors.background,
+                style: TextStyle(color: themeColors.text, fontSize: 16),
+                underline: Container(height: 1, color: themeColors.text.withOpacity(0.5)),
+                iconEnabledColor: themeColors.text,
+                items: ['System Default', 'Times New Roman', 'Arial', 'Comic Sans MS']
+                    .map((String font) => DropdownMenuItem<String>(
+                  value: font,
+                  child: Text(
+                      font,
+                      style: TextStyle(fontFamily: font == 'System Default' ? null : font)
+                  ),
+                ))
+                    .toList(),
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    _changeFontFamily(newValue);
+                    Navigator.pop(context);
+                  }
+                },
+              ),
+            ),
+
+            Divider(color: themeColors.text.withOpacity(0.2)),
+
             ListTile(
               title: Text("Theme", style: TextStyle(color: themeColors.text)),
               subtitle: Padding(

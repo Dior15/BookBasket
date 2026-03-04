@@ -5,11 +5,13 @@ class EpubParser {
   final double fontSize;
   final double lineHeight;
   final double paragraphSpacing;
+  final String? fontFamily;
 
   EpubParser({
     this.fontSize = 18.0,
     this.lineHeight = 1.4,
     this.paragraphSpacing = 16.0,
+    this.fontFamily,
   });
 
   List<EpubPage> paginate({
@@ -17,6 +19,7 @@ class EpubParser {
     required double maxHeight,
     required double maxWidth,
     required double horizontalPadding,
+    Map<String, Size>? imageSizes, // Accept image sizes
   }) {
     final List<EpubPage> pages = [];
     final double availableWidth = maxWidth - (horizontalPadding * 2);
@@ -33,7 +36,9 @@ class EpubParser {
 
       for (int j = 0; j < blocks.length; j++) {
         String blockHtml = blocks[j];
-        double blockHeight = _measureHeight(blockHtml, availableWidth);
+
+        // Pass the imageSizes map into the measuring function
+        double blockHeight = _measureHeight(blockHtml, availableWidth, imageSizes);
 
         if (currentPageHeight + blockHeight <= targetHeight) {
           currentPageHtml += blockHtml;
@@ -55,8 +60,31 @@ class EpubParser {
     return pages;
   }
 
-  double _measureHeight(String html, double width) {
-    if (html.contains('<img')) return 250.0; // Estimated image height
+  // Measure exact image height based on the map, capping at 500px
+  double _measureHeight(String html, double width, Map<String, Size>? imageSizes) {
+    if (html.contains('<img')) {
+      if (imageSizes != null) {
+        // Find the src attribute to identify the image
+        final srcMatch = RegExp(r'src="([^"]+)"').firstMatch(html) ?? RegExp(r"src='([^']+)'").firstMatch(html);
+        if (srcMatch != null) {
+          final src = srcMatch.group(1)!;
+          final size = imageSizes[src] ?? imageSizes[src.split('/').last];
+
+          if (size != null) {
+            double calculatedHeight = size.height;
+            // Scale height proportionally if image is wider than the screen
+            if (size.width > width) {
+              calculatedHeight = (size.height / size.width) * width;
+            }
+
+            // FIX: Reserve exact size UNLESS it's taller than 500, then cap it at 500!
+            return calculatedHeight > 400.0 ? 400.0 : calculatedHeight;
+          }
+        }
+      }
+      return 400.0; // Fallback if image isn't found
+    }
+
     final text = html.replaceAll(RegExp(r'<[^>]*>|&[^;]+;'), '').trim();
     if (text.isEmpty) return 0;
 
@@ -65,9 +93,10 @@ class EpubParser {
       text: TextSpan(
           text: text,
           style: TextStyle(
-              fontSize: measureSize,
-              height: lineHeight,
-              fontWeight: html.contains('<h') ? FontWeight.bold : FontWeight.normal
+            fontSize: measureSize,
+            height: lineHeight,
+            fontWeight: html.contains('<h') ? FontWeight.bold : FontWeight.normal,
+            fontFamily: fontFamily,
           )
       ),
       textDirection: TextDirection.ltr,
@@ -98,7 +127,7 @@ class EpubParser {
     final String openTag = tagMatch?.group(0) ?? "<$tagName>";
 
     final tp = TextPainter(
-      text: TextSpan(text: text, style: TextStyle(fontSize: fontSize, height: lineHeight)),
+      text: TextSpan(text: text, style: TextStyle(fontSize: fontSize, height: lineHeight, fontFamily: fontFamily)),
       textDirection: TextDirection.ltr,
     );
     tp.layout(maxWidth: width);
