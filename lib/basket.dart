@@ -7,6 +7,7 @@ import 'animations/staggered_in.dart';
 import 'animations/book_card.dart';
 import 'animations/book_details_page.dart';
 import 'ereader/epub_loader.dart';
+import 'database/db.dart';
 
 class Basket extends StatefulWidget {
   const Basket({super.key});
@@ -16,19 +17,32 @@ class Basket extends StatefulWidget {
 }
 
 class BasketState extends State<Basket> {
-  final List<String> _items =
-  [
-    "The Gunslinger.epub",
-    "It Ends With Us.epub",
-    "Camp X.epub",
-    "Fantastic 4 Rise of the Silver Surfer.epub",
-    "My Baby Mama Is A Loser.epub",
-    "Cruel Mate.epub",
-    "Twelve Angry Men.epub",
-    "An Omega For Dylan.epub",
-    "Under The Dome.epub",
-    "Sisters.epub",
-  ];
+  late List<String> _items = [];
+  // [
+  //   "The Gunslinger.epub",
+  //   "It Ends With Us.epub",
+  //   "Camp X.epub",
+  //   "Fantastic 4 Rise of the Silver Surfer.epub",
+  //   "My Baby Mama Is A Loser.epub",
+  //   "Cruel Mate.epub",
+  //   "Twelve Angry Men.epub",
+  //   "An Omega For Dylan.epub",
+  //   "Under The Dome.epub",
+  //   "Sisters.epub",
+  // ];
+
+  @override
+  void initState() {
+    super.initState();
+    getBookFileNames();
+  }
+
+  // This needs to be called outside of initState because initState cannot be an async method itself
+  void getBookFileNames() async {
+    DB db = await DB.getReference();
+    _items = await db.getBookFileNames();
+    setState(() {});
+  }
 
   void _openDetails(String title, Color color, String heroTag) {
     Navigator.of(context).push(

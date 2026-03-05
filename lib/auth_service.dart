@@ -1,5 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import 'db.dart';
+import 'database/db.dart';
 
 class AuthService {
   static const _kLoggedIn = 'logged_in';

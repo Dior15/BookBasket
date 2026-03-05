@@ -18,10 +18,6 @@ void main() async {
   );
 }
 
-void getBookCovers() async {
-
-}
-
 class BookBasketApp extends StatelessWidget {
   const BookBasketApp({super.key});
 
