@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../admin.dart';
+import '../basket.dart';
 import 'manage_users.dart';
 import 'reports.dart';
 import 'system_settings.dart';
+import '../database/db.dart';
 
 /// ------------------------------
 /// BOOK MODEL
@@ -25,7 +28,7 @@ class Book {
 /// ------------------------------
 class BookStore {
   static List<Book> books = [
-    Book(title: "Sample Book", author: "Admin", epubFile: "sample.epub"),
+    // Book(title: "Sample Book", author: "Admin", epubFile: "sample.epub"),
   ];
 }
 
@@ -80,18 +83,25 @@ class _ManageBooksState extends State<ManageBooks>
             child: const Text("Cancel"),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (book == null) {
-                // ADD
-                setState(() {
-                  BookStore.books.add(
-                    Book(
-                      title: titleController.text,
-                      author: authorController.text,
-                      epubFile: fileController.text,
-                    ),
-                  );
-                });
+                if (titleController.text.isNotEmpty && authorController.text.isNotEmpty && fileController.text.isNotEmpty) {
+                  // ADD
+                  DB db = await DB.getReference();
+                  db.addNewBook(titleController.text, authorController.text, fileController.text);
+                  context.read<BasketContentManager>().reload();
+
+                  setState(() {
+                    BookStore.books.add(
+                      Book(
+                        title: titleController.text,
+                        author: authorController.text,
+                        epubFile: fileController.text,
+                      ),
+                    );
+                  });
+
+                }
               } else {
                 // EDIT
                 setState(() {
@@ -116,6 +126,21 @@ class _ManageBooksState extends State<ManageBooks>
     setState(() {
       BookStore.books.removeAt(index);
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    getBooks();
+  }
+
+  void getBooks() async {
+    DB db = await DB.getReference();
+    List<Map<String, Object?>> books = await db.getBooks();
+    for (Map<String, Object?> book in books) {
+      BookStore.books.add(Book(title: book["title"].toString(), author: book["author"].toString(), epubFile: book["fileName"].toString()));
+    }
+    setState(() {});
   }
 
   @override

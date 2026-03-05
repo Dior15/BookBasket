@@ -17,7 +17,7 @@ class Basket extends StatefulWidget {
 }
 
 class BasketState extends State<Basket> {
-  late List<String> _items = [];
+  // late List<String> _items = [];
   // [
   //   "The Gunslinger.epub",
   //   "It Ends With Us.epub",
@@ -40,8 +40,8 @@ class BasketState extends State<Basket> {
   // This needs to be called outside of initState because initState cannot be an async method itself
   void getBookFileNames() async {
     DB db = await DB.getReference();
-    _items = await db.getBookFileNames();
-    setState(() {});
+    BasketContentManager.items = await db.getBookFileNames();
+    // setState(() {});
   }
 
   void _openDetails(String title, Color color, String heroTag) {
@@ -69,9 +69,9 @@ class BasketState extends State<Basket> {
           mainAxisSpacing: 8,
           childAspectRatio: 0.6666,
         ),
-        itemCount: _items.length,
+        itemCount: BasketContentManager.items.length,
         itemBuilder: (context, index) {
-          final title = _items[index];
+          final title = BasketContentManager.items[index];
           final heroTag = "basket-$index";
 
           // List<int> bytes = targetFile.readAsBytes();
@@ -86,11 +86,22 @@ class BasketState extends State<Basket> {
             heroTag: heroTag,
             onTap: () => Navigator.push(
               context, 
-              MaterialPageRoute(builder: (_) => EpubLoaderPage(epubAssetPath: "assets/books/${_items[index]}",))
+              MaterialPageRoute(builder: (_) => EpubLoaderPage(epubAssetPath: "assets/books/${BasketContentManager.items[index]}",))
             ),
           );
         },
 
     );
+  }
+}
+
+/// This class can be triggered as a ChangeNotifier to refresh the displayed content in the basket when it has been changed
+class BasketContentManager extends ChangeNotifier {
+  static List<String> items = [];
+
+  Future<void> reload() async {
+    DB db = await DB.getReference();
+    items = await db.getBookFileNames();
+    notifyListeners();
   }
 }

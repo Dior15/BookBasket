@@ -20,4 +20,17 @@ extension Books on DB {
     }
     return fileNames;
   }
+
+  /// Pass information as parameters, ensure that the epub file exists too, otherwise things might BREAK
+  Future<void> addNewBook(String title, String author, String fileName) async {
+    DB._database.insert(
+      "books",
+      {
+        "title": title,
+        "author": author,
+        "fileName": fileName,
+        "isBorrowed": 0
+      }
+    );
+  }
 }

@@ -1,3 +1,4 @@
+import 'package:bookbasket/basket.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import "dart:io";
@@ -11,8 +12,11 @@ import 'themes/theme_notifier.dart';
 
 void main() async {
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeNotifier(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeNotifier()),
+        ChangeNotifierProvider(create: (_) => BasketContentManager()..reload())
+      ],
       child: const BookBasketApp(),
     ),
   );

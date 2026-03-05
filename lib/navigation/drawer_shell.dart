@@ -7,6 +7,7 @@ import '../catalog.dart';
 import '../login_page.dart';
 import '../preferences_page.dart';
 import '../search.dart';
+import '../database/db.dart';
 import 'app_drawer.dart';
 
 class DrawerShell extends StatefulWidget {
@@ -45,7 +46,8 @@ class _DrawerShellState extends State<DrawerShell> {
       DrawerDestination(
         title: 'Basket',
         icon: Icons.shopping_basket,
-        builder: (_) => const Basket(),
+        builder: (_) => Basket(),
+        // builder: (_) => Basket(key: UniqueKey()), // Unique key forces the old state to be destroyed and a new one is created
       ),
       DrawerDestination(
         title: 'Preferences',
