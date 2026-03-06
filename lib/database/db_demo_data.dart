@@ -2,8 +2,8 @@ part of 'db.dart';
 
 extension DemoData on DB {
   Future<void> insertDemoData() async {
-    _insertDemoUsers();
-    _insertDemoBooks();
+    await _insertDemoUsers();
+    await _insertDemoBooks();
   }
 
   Future<void> _insertDemoUsers() async {
@@ -12,7 +12,7 @@ extension DemoData on DB {
         {
           "username": "admin@bookbasket.com",
           "password": "admin123",
-          "isAdmin": true
+          "isAdmin": 1
         }
     );
     await DB._database.insert(
@@ -20,7 +20,7 @@ extension DemoData on DB {
         {
           "username": "user@bookbasket.com",
           "password": "user123",
-          "isAdmin": false
+          "isAdmin": 0
         }
     );
   }
@@ -32,7 +32,7 @@ extension DemoData on DB {
         "title": "Camp X",
         "author": "Unknown",
         "fileName": "Camp X.epub",
-        "isBorrowed": false
+        "isBorrowed": 0
       },
     );
     await DB._database.insert(
@@ -41,7 +41,7 @@ extension DemoData on DB {
         "title": "The Gunslinger",
         "author": "Unknown",
         "fileName": "The Gunslinger.epub",
-        "isBorrowed": false
+        "isBorrowed": 0
       },
     );
     await DB._database.insert(
@@ -50,7 +50,7 @@ extension DemoData on DB {
         "title": "It Ends With Us",
         "author": "Unknown",
         "fileName": "It Ends With Us.epub",
-        "isBorrowed": false
+        "isBorrowed": 0
       },
     );
     await DB._database.insert(
@@ -59,7 +59,7 @@ extension DemoData on DB {
         "title": "Fantastic 4 Rise of the Silver Surfer",
         "author": "Unknown",
         "fileName": "Fantastic 4 Rise of the Silver Surfer.epub",
-        "isBorrowed": false
+        "isBorrowed": 0
       },
     );
     await DB._database.insert(
@@ -68,7 +68,7 @@ extension DemoData on DB {
         "title": "My Baby Mama Is A Loser",
         "author": "Unknown",
         "fileName": "My Baby Mama Is A Loser.epub",
-        "isBorrowed": false
+        "isBorrowed": 0
       },
     );
     await DB._database.insert(
@@ -77,7 +77,7 @@ extension DemoData on DB {
         "title": "Cruel Mate",
         "author": "Unknown",
         "fileName": "Cruel Mate.epub",
-        "isBorrowed": false
+        "isBorrowed": 0
       },
     );
     await DB._database.insert(
@@ -86,7 +86,7 @@ extension DemoData on DB {
         "title": "Twelve Angry Men",
         "author": "Unknown",
         "fileName": "Twelve Angry Men.epub",
-        "isBorrowed": false
+        "isBorrowed": 0
       },
     );
     await DB._database.insert(
@@ -95,7 +95,7 @@ extension DemoData on DB {
         "title": "An Omega For Dylan",
         "author": "Unknown",
         "fileName": "An Omega For Dylan.epub",
-        "isBorrowed": false
+        "isBorrowed": 0
       },
     );
     await DB._database.insert(
@@ -104,7 +104,7 @@ extension DemoData on DB {
         "title": "Under The Dome",
         "author": "Unknown",
         "fileName": "Under The Dome.epub",
-        "isBorrowed": false
+        "isBorrowed": 0
       },
     );
     await DB._database.insert(
@@ -113,7 +113,7 @@ extension DemoData on DB {
           "title": "Sisters",
           "author": "Unknown",
           "fileName": "Sisters.epub",
-          "isBorrowed": false
+          "isBorrowed": 0
         }
     );
   }
