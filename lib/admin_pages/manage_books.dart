@@ -135,6 +135,7 @@ class _ManageBooksState extends State<ManageBooks>
   }
 
   void getBooks() async {
+    BookStore.books = [];
     DB db = await DB.getReference();
     List<Map<String, Object?>> books = await db.getBooks();
     for (Map<String, Object?> book in books) {

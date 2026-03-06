@@ -20,9 +20,9 @@ class AppUser {
 /// SHARED USER STORE (UI ONLY)
 /// ------------------------------
 class UserStore {
-  static List<AppUser> users = [
-    AppUser(name: "Book Basket User", email: "user@bookbasket.com", role: "User"),
-    AppUser(name: "Book Basket Admin User", email: "admin@bookbasket.com", role: "Admin"),
+  static List<AppUser> userList = [
+    // AppUser(name: "Book Basket User", email: "user@bookbasket.com", role: "User"),
+    // AppUser(name: "Book Basket Admin User", email: "admin@bookbasket.com", role: "Admin"),
   ];
 }
 
@@ -37,6 +37,21 @@ class ManageUsers extends StatefulWidget {
 }
 
 class _ManageUsersState extends State<ManageUsers> {
+  @override
+  void initState() {
+    super.initState();
+    getUsers();
+  }
+
+  Future<void> getUsers() async {
+    UserStore.userList = [];
+    DB db = await DB.getReference();
+    List<Map<String, Object?>> users = await db.getUsers();
+    for (Map<String, Object?> user in users) {
+      UserStore.userList.add(AppUser(name: user["username"].toString(), email: user["password"].toString(), role: user["isAdmin"].toString() == "1" ? "Admin" : "User"));
+    }
+    setState(() {});
+  }
 
   void _addOrEditUser({AppUser? user, int? index}) {
     final nameController =
@@ -85,8 +100,9 @@ class _ManageUsersState extends State<ManageUsers> {
               DB db = await DB.getReference();
               if (user == null) {
                 // Add
+                db.addUser(emailController.text, "123", selectedRole == "Admin"); // THERE'S NO PASSWORD FIELD IN THE FORM, SO SETTING A DEFAULT PASSWORD OF 123
                 setState(() {
-                  UserStore.users.add(
+                  UserStore.userList.add(
                     AppUser(
                       name: nameController.text,
                       email: emailController.text,
@@ -98,7 +114,7 @@ class _ManageUsersState extends State<ManageUsers> {
                 // Update
                 db.changeIsAdmin(emailController.text, selectedRole == "Admin");
                 setState(() {
-                  UserStore.users[index!] = AppUser(
+                  UserStore.userList[index!] = AppUser(
                     name: nameController.text,
                     email: emailController.text,
                     role: selectedRole,
@@ -128,9 +144,11 @@ class _ManageUsersState extends State<ManageUsers> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () {
+            onPressed: () async {
+              DB db = await DB.getReference();
+              db.deleteUser(UserStore.userList.elementAt(index).email);
               setState(() {
-                UserStore.users.removeAt(index);
+                UserStore.userList.removeAt(index);
               });
               Navigator.pop(context);
             },
@@ -158,7 +176,7 @@ class _ManageUsersState extends State<ManageUsers> {
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                "Total Users: ${UserStore.users.length}",
+                "Total Users: ${UserStore.userList.length}",
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -168,9 +186,9 @@ class _ManageUsersState extends State<ManageUsers> {
           ),
           Expanded(
             child: ListView.builder(
-              itemCount: UserStore.users.length,
+              itemCount: UserStore.userList.length,
               itemBuilder: (context, index) {
-                final user = UserStore.users[index];
+                final user = UserStore.userList[index];
 
                 return Card(
                   margin:

@@ -174,9 +174,9 @@ class _LoginPageState extends State<LoginPage> {
                                       if (value.isEmpty) {
                                         return 'Password is required';
                                       }
-                                      if (value.length < 4) {
-                                        return 'Password is too short';
-                                      }
+                                      // if (value.length < 4) {
+                                      //   return 'Password is too short';
+                                      // }
                                       return null;
                                     },
                                   ),
