@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../database/db.dart';
 
 /// ------------------------------
 /// USER MODEL
@@ -80,8 +81,10 @@ class _ManageUsersState extends State<ManageUsers> {
             child: const Text("Cancel"),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
+              DB db = await DB.getReference();
               if (user == null) {
+                // Add
                 setState(() {
                   UserStore.users.add(
                     AppUser(
@@ -92,6 +95,8 @@ class _ManageUsersState extends State<ManageUsers> {
                   );
                 });
               } else {
+                // Update
+                db.changeIsAdmin(emailController.text, selectedRole == "Admin");
                 setState(() {
                   UserStore.users[index!] = AppUser(
                     name: nameController.text,

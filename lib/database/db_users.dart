@@ -22,4 +22,13 @@ extension Users on DB {
     );
     return(user.isNotEmpty && user.first["isAdmin"] == 1); // REMEMBER THAT SQFLITE STORES BOOLEANS AS 0 OR 1
   }
+
+  Future<void> changeIsAdmin(String username, bool isAdmin) async {
+    await DB._database.update(
+      "users",
+      {"isAdmin": isAdmin ? 1 : 0},
+      where: "username = ?",
+      whereArgs: [username]
+    );
+  }
 }
