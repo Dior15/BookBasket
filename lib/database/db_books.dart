@@ -33,4 +33,18 @@ extension Books on DB {
       }
     );
   }
+
+  /// Pass an epub file name to check its availability, receive boolean
+  Future<bool> isAvailableByFileName(String filename) async {
+    final result =  await DB._database.query(
+      "books",
+      columns: ["isBorrowed"],
+      where: "filename = ?",
+      whereArgs: [filename]
+    );
+    if (result.isNotEmpty) {
+      return(result.first["isBorrowed"] == 0);
+    }
+    return(false);
+  }
 }
