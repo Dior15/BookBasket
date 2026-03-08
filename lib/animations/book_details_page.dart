@@ -98,8 +98,16 @@ class BookDetailsPage extends StatelessWidget with CoverLoader{
               if (checkoutID == null) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text("This book is unavailable right now."),
+                    content: Text("${title.substring(0, title.length-5)} is unavailable right now."),
                     backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Successfully checked out ${title.substring(0, title.length-5)}"),
+                    backgroundColor: Colors.green,
                     behavior: SnackBarBehavior.floating,
                   ),
                 );

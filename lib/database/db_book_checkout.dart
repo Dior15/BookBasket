@@ -25,27 +25,19 @@ extension BookCheckout on DB {
   }
 
   /// Pass the id of the checkout record to be deleted
-  Future<void> checkInBook(int checkOutID) async {
+  Future<void> checkInBook(String username, String fileName) async {
     await DB._database.transaction((transaction) async {
-      List<Map<String, Object?>> checkoutRecord = await transaction.query(
-        "bookCheckout",
-        where: "checkOutID = ?",
-        whereArgs: [checkOutID]
-      );
-
-      if (checkoutRecord.isEmpty) return;
-
       await transaction.delete(
         "bookCheckout",
-        where: "checkOutID = ?",
-        whereArgs: [checkOutID]
+        where: "username = ? AND fileName = ?",
+        whereArgs: [username, fileName]
       );
 
       await transaction.update(
         "books",
         {"isBorrowed": 0},
         where: "fileName = ?",
-        whereArgs: [checkoutRecord.first["fileName"].toString()]
+        whereArgs: [fileName]
       );
     });
   }
@@ -63,7 +55,6 @@ extension BookCheckout on DB {
     for (Map<String, Object?> book in result) {
       fileNames.add(book["fileName"] as String);
     }
-    print(fileNames);
     return(fileNames);
   }
 }

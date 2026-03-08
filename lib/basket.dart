@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:epub_parser/epub_parser.dart' hide Image;
 import 'package:path/path.dart' as p;
+import 'package:provider/provider.dart';
 
 import 'animations/app_page_route.dart';
 import 'animations/staggered_in.dart';
@@ -81,14 +82,41 @@ class BasketState extends State<Basket> {
           // Opens a book and reads all of its content into memory
 //           EpubBook epubBook = await EpubReader.readBook(bytes);
 
-          return BookCard(
-            title: title,
-            color: cardColor,
-            heroTag: heroTag,
-            onTap: () => Navigator.push(
-              context, 
-              MaterialPageRoute(builder: (_) => EpubLoaderPage(epubAssetPath: "assets/books/${BasketContentManager.items[index]}",))
-            ),
+          return GestureDetector(
+            onLongPressStart: (details) {
+              showMenu(
+                context: context,
+                position: RelativeRect.fromLTRB(
+                  details.globalPosition.dx,
+                  details.globalPosition.dy,
+                  details.globalPosition.dx,
+                  details.globalPosition.dy
+                ),
+                items: [
+                  PopupMenuItem(
+                    value: "return",
+                    child: Text("Return ${title.substring(0, title.length-5)}")
+                  )
+                ]
+              ).then((value) async {
+                if (value == "return") {
+                  DB db = await DB.getReference();
+                  await db.checkInBook(await AuthService.getEmail() as String, title);
+                  await context.read<BasketContentManager>().reload();
+                  setState(() {});
+                }
+              });
+            },
+
+            child: BookCard(
+              title: title,
+              color: cardColor,
+              heroTag: heroTag,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => EpubLoaderPage(epubAssetPath: "assets/books/${BasketContentManager.items[index]}",))
+              ),
+            )
           );
         },
 
