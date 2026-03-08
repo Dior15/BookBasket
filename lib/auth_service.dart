@@ -10,7 +10,7 @@ class AuthService {
   static const String adminEmail = 'admin@bookbasket.com';
   static const String adminPassword = 'admin123';
 
-  static String userEmail = 'user@bookbasket.com';
+  static String userEmail = 'user@bookbasket.com'; // This stores the current logged in user I think
   static String userPassword = 'user123';
 
   static Future<bool> isLoggedIn() async {

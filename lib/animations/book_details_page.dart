@@ -1,6 +1,11 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../basket.dart';
 import '../ereader/cover_loader.dart';
+import '../auth_service.dart';
+import '../database/db.dart';
 
 class BookDetailsPage extends StatelessWidget with CoverLoader{
   final String title;
@@ -85,6 +90,23 @@ class BookDetailsPage extends StatelessWidget with CoverLoader{
               ),
             ),
           ),
+          TextButton(
+            onPressed: () async {
+              String? username = await AuthService.getEmail();
+              DB db = await DB.getReference();
+              int? checkoutID = await db.checkOutBook(username!, title);
+              if (checkoutID == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("This book is unavailable right now."),
+                    backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+              context.read<BasketContentManager>().reload();
+            },
+            child: Text("Checkout ${title.substring(0, title.length-5)}"),)
         ],
       ),
     );

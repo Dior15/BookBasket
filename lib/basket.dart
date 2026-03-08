@@ -8,6 +8,7 @@ import 'animations/book_card.dart';
 import 'animations/book_details_page.dart';
 import 'ereader/epub_loader.dart';
 import 'database/db.dart';
+import 'auth_service.dart';
 
 class Basket extends StatefulWidget {
   const Basket({super.key});
@@ -40,7 +41,7 @@ class BasketState extends State<Basket> {
   // This needs to be called outside of initState because initState cannot be an async method itself
   void getBookFileNames() async {
     DB db = await DB.getReference();
-    BasketContentManager.items = await db.getBookFileNames();
+    BasketContentManager.items = await db.getBasketContents(await AuthService.getEmail() as String);
     // setState(() {});
   }
 
@@ -101,7 +102,7 @@ class BasketContentManager extends ChangeNotifier {
 
   Future<void> reload() async {
     DB db = await DB.getReference();
-    items = await db.getBookFileNames();
+    items = await db.getBasketContents(await AuthService.getEmail() as String);
     notifyListeners();
   }
 }
