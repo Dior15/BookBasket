@@ -23,7 +23,7 @@ extension Books on DB {
 
   /// Pass information as parameters, ensure that the epub file exists too, otherwise things might BREAK
   Future<void> addNewBook(String title, String author, String fileName) async {
-    DB._database.insert(
+    await DB._database.insert(
       "books",
       {
         "title": title,
