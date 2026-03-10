@@ -29,32 +29,41 @@ class BookBasketApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
 
-    late final ThemeData lightTheme;
-    late final ThemeData darkTheme;
-    late final ThemeMode themeMode;
+    // 1. We build the base theme depending on the mode
+    late ThemeData activeTheme;
 
     if (themeNotifier.themeType == ThemeType.advanced) {
-      final advancedTheme = buildAdvancedTheme(
-        themeNotifier.backgroundColor,
+      // For advanced, we pass the first color of the gradient as a fallback
+      // for things like AppBars, but the true background will be transparent.
+      activeTheme = buildAdvancedTheme(
+        themeNotifier.backgroundColor.colors.first,
         themeNotifier.foregroundColor,
       );
-      lightTheme = advancedTheme;
-      darkTheme = advancedTheme;
-      themeMode = ThemeMode.light;
+    } else if (themeNotifier.themeType == ThemeType.dark) {
+      activeTheme = ThemeData.dark();
     } else {
-      lightTheme = ThemeData.light();
-      darkTheme = ThemeData.dark();
-      themeMode = themeNotifier.themeType == ThemeType.light
-          ? ThemeMode.light
-          : ThemeMode.dark;
+      activeTheme = ThemeData.light();
     }
+
+    // 2. We force the scaffold background to be transparent across the ENTIRE app
+    activeTheme = activeTheme.copyWith(
+      scaffoldBackgroundColor: Colors.transparent,
+    );
 
     return MaterialApp(
       title: 'BookBasket',
       debugShowCheckedModeBanner: false,
-      theme: lightTheme,
-      darkTheme: darkTheme,
-      themeMode: themeMode,
+      theme: activeTheme,
+
+      // 3. THE MAGIC: We wrap the entire navigation stack in your gradient!
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            gradient: themeNotifier.backgroundColor, // Your global gradient!
+          ),
+          child: child, // All your transparent Scaffolds will render on top of this
+        );
+      },
       home: const AuthGate(),
     );
   }
