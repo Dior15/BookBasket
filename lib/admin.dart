@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'admin_pages/manage_books.dart';
 import 'admin_pages/manage_users.dart';
-import 'admin_pages/reports.dart';
-import 'admin_pages/system_settings.dart';
 
 class AdminPage extends StatelessWidget {
   const AdminPage({super.key});
@@ -38,7 +36,7 @@ class AdminPage extends StatelessWidget {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Manage content, users, reports, and app settings',
+                  'Manage content, users',
                   style: TextStyle(color: Colors.white70),
                 ),
               ],
@@ -53,8 +51,7 @@ class AdminPage extends StatelessWidget {
               children: const [
                 AdminCard(icon: Icons.book_rounded, title: "Manage Books"),
                 AdminCard(icon: Icons.people_alt_rounded, title: "Manage Users"),
-                AdminCard(icon: Icons.analytics_rounded, title: "Reports"),
-                AdminCard(icon: Icons.settings_suggest_rounded, title: "System Settings"),
+
               ],
             ),
           ),
@@ -87,20 +84,6 @@ class AdminCard extends StatelessWidget {
         context,
         MaterialPageRoute(
           builder: (context) => const ManageUsers(),
-        ),
-      );
-    } else if (title == "Reports") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const Reports(),
-        ),
-      );
-    } else if (title == "System Settings") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const SystemSettings(),
         ),
       );
     }
