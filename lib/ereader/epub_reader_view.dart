@@ -54,11 +54,13 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   List<EpubPage> _pages = [];
   final Map<String, Uint8List> _images = {};
 
-  // FIX: Added the map to hold true dimensions
   final Map<String, Size> _imageSizes = {};
 
   PageController? _pageController;
   int _currentPage = 0;
+
+  // NEW: Store bookmarked page indices
+  Set<int> _bookmarks = {};
 
   EpubParser _parser = EpubParser();
   ReaderTheme _readerTheme = ReaderTheme.light;
@@ -102,6 +104,30 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     await prefs.setString('reader_font_family', family);
   }
 
+  // NEW: Load persistent bookmarks
+  Future<void> _loadBookmarks() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_title != null) {
+      final savedBookmarks = prefs.getStringList('epub_bookmarks_${_title!.hashCode}');
+      if (savedBookmarks != null) {
+        if (mounted) {
+          setState(() {
+            _bookmarks = savedBookmarks.map((e) => int.parse(e)).toSet();
+          });
+        }
+      }
+    }
+  }
+
+  // NEW: Save persistent bookmarks
+  Future<void> _saveBookmarks() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_title != null) {
+      final bookmarksList = _bookmarks.map((e) => e.toString()).toList();
+      await prefs.setStringList('epub_bookmarks_${_title!.hashCode}', bookmarksList);
+    }
+  }
+
   Future<void> _prepareBook() async {
     try {
       final book = await EpubReader.readBook(widget.epubBytes);
@@ -110,7 +136,6 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
         if (v.Content != null) _images[k] = Uint8List.fromList(v.Content!);
       });
 
-      // FIX: Decode the images asynchronously so the parser knows exactly how big they are
       for (var entry in _images.entries) {
         final decodedImage = await decodeImageFromList(entry.value);
         _imageSizes[entry.key] = Size(decodedImage.width.toDouble(), decodedImage.height.toDouble());
@@ -118,8 +143,10 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
 
       _extractSections(book.Chapters ?? []);
 
-      // Assign title last to prevent premature pagination builds
       _title = book.Title ?? "EPUB Reader";
+
+      // Load bookmarks for this specific book
+      await _loadBookmarks();
 
       if (mounted) setState(() {});
     } catch (e) {
@@ -147,7 +174,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
         maxHeight: constraints.maxHeight - 57.0,
         maxWidth: constraints.maxWidth,
         horizontalPadding: 24.0,
-        imageSizes: _imageSizes, // FIX: Pass the sizes map into the parser
+        imageSizes: _imageSizes,
       );
 
       newPages.addAll(chunk.map((p) => EpubPage(html: p.html, sectionIndex: i)));
@@ -271,6 +298,8 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
                   itemBuilder: (context, index) => _buildPageContent(index),
                 ),
                 _buildTapZones(),
+                _buildBookmarkIcon(),     // NEW: Render the bookmark ribbon
+                _buildBookmarkTapZone(),  // NEW: Tap zone specifically for the bookmark
                 _buildNavigationArrows(),
               ],
             );
@@ -323,8 +352,47 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     );
   }
 
+  // NEW: Tap zone exclusively for toggling the bookmark in the top right corner
+  Widget _buildBookmarkTapZone() {
+    return Positioned(
+      top: 0,
+      right: 0,
+      width: 100,
+      height: 100,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          setState(() {
+            if (_bookmarks.contains(_currentPage)) {
+              _bookmarks.remove(_currentPage);
+            } else {
+              _bookmarks.add(_currentPage);
+            }
+          });
+          _saveBookmarks();
+        },
+      ),
+    );
+  }
+
+  // NEW: Visual indicator if the current page is bookmarked
+  Widget _buildBookmarkIcon() {
+    if (!_bookmarks.contains(_currentPage)) return const SizedBox.shrink();
+
+    final themeColors = ReaderThemeColors.get(_readerTheme);
+    return Positioned(
+      top: 0,
+      right: 24, // Aligned with your 24px HTML padding
+      child: Icon(
+        Icons.bookmark,
+        size: 48,
+        color: Color(0xFF1A237E).withOpacity(0.5),
+      ),
+    );
+  }
+
   Widget _buildPageContent(int index) {
-    if (_pages.isEmpty) return const SizedBox.shrink(); // Safety check
+    if (_pages.isEmpty) return const SizedBox.shrink();
 
     final themeColors = ReaderThemeColors.get(_readerTheme);
     return Container(
@@ -403,23 +471,88 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     );
   }
 
+  // UPDATED: Now uses a DefaultTabController for Chapters and Bookmarks
   Widget _buildDrawer(ReaderThemeColors themeColors) {
+    // Sort and filter out any bookmarks that are mathematically out of bounds
+    // (which can happen if font size changes result in fewer pages)
+    final validBookmarks = _bookmarks.where((b) => b < _pages.length).toList()..sort();
+
     return Drawer(
       backgroundColor: themeColors.background,
-      child: ListView.builder(
-        itemCount: _sections.length,
-        itemBuilder: (context, index) {
-          final s = _sections[index];
-          return ListTile(
-            contentPadding: EdgeInsets.only(left: 16 + (s.depth * 16.0)),
-            title: Text(s.title, style: TextStyle(color: themeColors.text)),
-            onTap: () {
-              final pIndex = _pages.indexWhere((p) => p.sectionIndex == index);
-              if (pIndex != -1) _pageController?.jumpToPage(pIndex);
-              Navigator.pop(context);
-            },
-          );
-        },
+      child: SafeArea(
+        child: DefaultTabController(
+          length: 2,
+          child: Column(
+            children: [
+              TabBar(
+                labelColor: themeColors.text,
+                unselectedLabelColor: themeColors.text.withOpacity(0.5),
+                indicatorColor: themeColors.text,
+                tabs: const [
+                  Tab(text: "Chapters"),
+                  Tab(text: "Bookmarks"),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    // Tab 1: Chapters
+                    ListView.builder(
+                      itemCount: _sections.length,
+                      itemBuilder: (context, index) {
+                        final s = _sections[index];
+                        return ListTile(
+                          contentPadding: EdgeInsets.only(left: 16 + (s.depth * 16.0)),
+                          title: Text(s.title, style: TextStyle(color: themeColors.text)),
+                          onTap: () {
+                            final pIndex = _pages.indexWhere((p) => p.sectionIndex == index);
+                            if (pIndex != -1) _pageController?.jumpToPage(pIndex);
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+                    // Tab 2: Bookmarks
+                    validBookmarks.isEmpty
+                        ? Center(
+                      child: Text(
+                        "No bookmarks yet.\nTap the top right corner of a page to add one.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: themeColors.text.withOpacity(0.7)),
+                      ),
+                    )
+                        : ListView.builder(
+                      itemCount: validBookmarks.length,
+                      itemBuilder: (context, index) {
+                        int pageIndex = validBookmarks[index];
+                        int sectionIndex = _pages[pageIndex].sectionIndex;
+                        String chapterTitle = _sections[sectionIndex].title;
+
+                        return ListTile(
+                          leading: Icon(Icons.bookmark, color: Color(0xFF1A237E)),
+                          title: Text(
+                              "Page ${pageIndex + 1}",
+                              style: TextStyle(color: themeColors.text)
+                          ),
+                          subtitle: Text(
+                              chapterTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: themeColors.text.withOpacity(0.6))
+                          ),
+                          onTap: () {
+                            _pageController?.jumpToPage(pageIndex);
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
