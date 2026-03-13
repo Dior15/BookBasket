@@ -29,19 +29,28 @@ class BookBasketApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
 
-    late final ThemeData lightTheme;
-    late final ThemeData darkTheme;
-    late final ThemeMode themeMode;
+    late ThemeData lightTheme;
+    late ThemeData darkTheme;
+    late ThemeMode themeMode;
 
     if (themeNotifier.themeType == ThemeType.advanced) {
+      // Extract the fallback color for ThemeData from your Gradient
+      Color fallbackColor = Colors.white;
+      if (themeNotifier.backgroundColor is LinearGradient) {
+        fallbackColor = (themeNotifier.backgroundColor as LinearGradient).colors.first;
+      } else if (themeNotifier.backgroundColor is RadialGradient) {
+        fallbackColor = (themeNotifier.backgroundColor as RadialGradient).colors.first;
+      }
+
       final advancedTheme = buildAdvancedTheme(
-        themeNotifier.backgroundColor,
+        fallbackColor,
         themeNotifier.foregroundColor,
       );
       lightTheme = advancedTheme;
       darkTheme = advancedTheme;
       themeMode = ThemeMode.light;
     } else {
+      // Kept your colleague's standard theme setups
       lightTheme = buildBookBasketTheme(Brightness.light);
       darkTheme = buildBookBasketTheme(Brightness.dark);
       themeMode = themeNotifier.themeType == ThemeType.light
@@ -49,12 +58,25 @@ class BookBasketApp extends StatelessWidget {
           : ThemeMode.dark;
     }
 
+    // Force transparent scaffold backgrounds on BOTH themes to allow the gradient to show
+    lightTheme = lightTheme.copyWith(scaffoldBackgroundColor: Colors.transparent);
+    darkTheme = darkTheme.copyWith(scaffoldBackgroundColor: Colors.transparent);
+
     return MaterialApp(
       title: 'BookBasket',
       debugShowCheckedModeBanner: false,
       theme: lightTheme,
       darkTheme: darkTheme,
       themeMode: themeMode,
+      // The Magic Wrap: Injecting the overarching app gradient!
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            gradient: themeNotifier.backgroundColor,
+          ),
+          child: child,
+        );
+      },
       home: const AuthGate(),
     );
   }
@@ -93,9 +115,10 @@ class _AuthGateState extends State<AuthGate> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
-    if (!_loggedIn) return const LoginPage();
-    return DrawerShell(isAdmin: _admin);
+    return _loggedIn ? DrawerShell(isAdmin: _admin) : const LoginPage();
   }
 }

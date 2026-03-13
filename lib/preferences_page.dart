@@ -28,10 +28,42 @@ class _PreferencesPageState extends State<PreferencesPage> {
     Colors.purple[900]!,
   ];
 
+  // Restored your Gradient Logic
+  final List<Gradient> lightGradients = [
+    LinearGradient(colors: [Colors.red, Colors.white], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+    LinearGradient(colors: [Colors.lightBlue, Colors.white], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+    LinearGradient(colors: [Colors.lightGreen, Colors.white], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+    LinearGradient(colors: [Colors.white, Colors.white], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+    LinearGradient(colors: [Colors.orange[300]!, Colors.white], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+    LinearGradient(colors: [Colors.purple[300]!, Colors.white], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+  ];
+
+  final List<Gradient> darkGradients = [
+    LinearGradient(colors: [Colors.red[900]!, Colors.black], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+    LinearGradient(colors: [Colors.blue[900]!, Colors.black], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+    LinearGradient(colors: [Colors.lightGreen[900]!, Colors.black], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+    LinearGradient(colors: [Colors.black, Colors.black], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+    LinearGradient(colors: [Colors.orange[900]!, Colors.black], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+    LinearGradient(colors: [Colors.purple[900]!, Colors.black], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+  ];
+
+  // Helper function to safely extract the first color from any gradient type
+  Color _getPrimaryColor(Gradient gradient) {
+    if (gradient is RadialGradient) return gradient.colors.first;
+    if (gradient is LinearGradient) return gradient.colors.first;
+    return Colors.white; // Fallback
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final colorScheme = Theme.of(context).colorScheme;
+
+    final Gradient selectedBackgroundGradient = themeNotifier.backgroundColor;
+    final Color selectedForegroundColor = themeNotifier.foregroundColor;
+
+    // Safely extract the primary (first) color from the gradient to check for clashes with the foreground
+    final Color backgroundPrimaryColor = _getPrimaryColor(selectedBackgroundGradient);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
@@ -108,13 +140,13 @@ class _PreferencesPageState extends State<PreferencesPage> {
                 const Padding(
                   padding: EdgeInsets.all(12.0),
                   child: Text(
-                    "Background Color",
+                    "Background Gradient",
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
-                _buildColorOptions(
-                  themeNotifier.backgroundColor,
-                  themeNotifier.foregroundColor,
+                _buildGradientOptions(
+                  selectedBackgroundGradient,
+                  selectedForegroundColor,
                   themeNotifier.setBackgroundColor,
                 ),
                 const Padding(
@@ -125,8 +157,8 @@ class _PreferencesPageState extends State<PreferencesPage> {
                   ),
                 ),
                 _buildColorOptions(
-                  themeNotifier.foregroundColor,
-                  themeNotifier.backgroundColor,
+                  selectedForegroundColor,
+                  backgroundPrimaryColor,
                   themeNotifier.setForegroundColor,
                 ),
                 const SizedBox(height: 16),
@@ -143,11 +175,70 @@ class _PreferencesPageState extends State<PreferencesPage> {
     );
   }
 
+  Widget _buildGradientOptions(
+      Gradient selectedGradient,
+      Color disabledColor,
+      Function(Gradient) onGradientSelected,
+      ) {
+    return Column(
+      children: [
+        _buildGradientRow(lightGradients, selectedGradient, disabledColor, onGradientSelected),
+        _buildGradientRow(darkGradients, selectedGradient, disabledColor, onGradientSelected),
+      ],
+    );
+  }
+
+  // Integrated Colleague's checkmark & shadow styling into your gradients
+  Widget _buildGradientRow(
+      List<Gradient> gradients,
+      Gradient selectedGradient,
+      Color disabledColor,
+      Function(Gradient) onGradientSelected,
+      ) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: gradients.map((gradient) {
+        final primaryColor = _getPrimaryColor(gradient);
+        final isDisabled = primaryColor == disabledColor;
+        final isSelected = selectedGradient == gradient;
+
+        return GestureDetector(
+          onTap: isDisabled ? null : () => onGradientSelected(gradient),
+          child: Container(
+            margin: const EdgeInsets.all(6),
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              gradient: gradient,
+              shape: BoxShape.circle,
+              border: Border.all(
+                width: isSelected ? 3 : 1,
+                color: isDisabled ? Colors.grey : Colors.black,
+              ),
+              boxShadow: isSelected
+                  ? [
+                BoxShadow(
+                  color: primaryColor.withOpacity(0.45),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+                  : null,
+            ),
+            child: isSelected
+                ? const Icon(Icons.check, color: Colors.white, size: 18)
+                : null,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   Widget _buildColorOptions(
-    Color selectedColor,
-    Color disabledColor,
-    Function(Color) onColorSelected,
-  ) {
+      Color selectedColor,
+      Color disabledColor,
+      Function(Color) onColorSelected,
+      ) {
     return Column(
       children: [
         _buildColorRow(lightColorOptions, selectedColor, disabledColor, onColorSelected),
@@ -157,11 +248,11 @@ class _PreferencesPageState extends State<PreferencesPage> {
   }
 
   Widget _buildColorRow(
-    List<Color> colors,
-    Color selectedColor,
-    Color disabledColor,
-    Function(Color) onColorSelected,
-  ) {
+      List<Color> colors,
+      Color selectedColor,
+      Color disabledColor,
+      Function(Color) onColorSelected,
+      ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: colors.map((color) {
@@ -183,12 +274,12 @@ class _PreferencesPageState extends State<PreferencesPage> {
               ),
               boxShadow: isSelected
                   ? [
-                      BoxShadow(
-                        color: color.withOpacity(0.45),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
+                BoxShadow(
+                  color: color.withOpacity(0.45),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
                   : null,
             ),
             child: isSelected
