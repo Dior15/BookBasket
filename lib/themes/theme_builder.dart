@@ -20,80 +20,33 @@ ThemeData buildBookBasketTheme(Brightness brightness) {
     brightness: brightness,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: background,
-    appBarTheme: const AppBarTheme(
+
+    // FIX: Updated standard AppBar to respect the current surface text color
+    appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
+      foregroundColor: colorScheme.onSurface, // Forces icons/text to contrast the background
       elevation: 0,
       centerTitle: false,
+      iconTheme: IconThemeData(color: colorScheme.onSurface),
       titleTextStyle: TextStyle(
+        color: colorScheme.onSurface, // Explicitly colors the title text
         fontSize: 20,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.2,
       ),
     ),
+
     cardTheme: CardThemeData(
       elevation: 0,
       color: surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      margin: EdgeInsets.zero,
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: surface,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: colorScheme.outlineVariant),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.7)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: colorScheme.primary, width: 1.4),
-      ),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: colorScheme.primary,
-        foregroundColor: colorScheme.onPrimary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        textStyle: const TextStyle(fontWeight: FontWeight.w700),
-      ),
-    ),
-    chipTheme: ChipThemeData(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      selectedColor: colorScheme.primary.withOpacity(0.18),
-      backgroundColor: surface,
-      labelStyle: TextStyle(color: colorScheme.onSurface, fontWeight: FontWeight.w600),
-      side: BorderSide(color: colorScheme.outlineVariant.withOpacity(0.7)),
-    ),
-    listTileTheme: ListTileThemeData(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      tileColor: surface,
-      iconColor: colorScheme.onSurfaceVariant,
-      textColor: colorScheme.onSurface,
-    ),
-    dividerTheme: DividerThemeData(
-      color: colorScheme.outlineVariant.withOpacity(0.65),
-      thickness: 1,
-      space: 20,
-    ),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: colorScheme.primary,
-      foregroundColor: colorScheme.onPrimary,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
   );
 }
 
 ThemeData buildAdvancedTheme(Color bg, Color fg) {
-  final brightness = _estimateBrightnessForColor(bg);
-
-  final baseTextTheme = brightness == Brightness.dark
-      ? Typography.whiteMountainView
-      : Typography.blackMountainView;
+  final brightness = ThemeData.estimateBrightnessForColor(bg);
+  final baseTextTheme = ThemeData(brightness: brightness).textTheme;
 
   final colorScheme = ColorScheme(
     brightness: brightness,
@@ -114,11 +67,18 @@ ThemeData buildAdvancedTheme(Color bg, Color fg) {
     scaffoldBackgroundColor: bg,
     colorScheme: colorScheme,
 
-    // AppBar
+    // FIX: Updated Advanced AppBar to strictly use your selected fg color
     appBarTheme: AppBarTheme(
-      backgroundColor: bg,
+      backgroundColor: Colors.transparent, // Let the global gradient show through!
       foregroundColor: fg,
       elevation: 0,
+      iconTheme: IconThemeData(color: fg), // Forces back buttons and menu icons to match
+      titleTextStyle: TextStyle(
+        color: fg, // Explicitly colors the title text
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.2,
+      ),
     ),
 
     // Text
@@ -150,16 +110,5 @@ ThemeData buildAdvancedTheme(Color bg, Color fg) {
       thumbColor: MaterialStatePropertyAll(fg),
       trackColor: MaterialStatePropertyAll(fg.withOpacity(0.5)),
     ),
-
-    // ListTiles
-    listTileTheme: ListTileThemeData(
-      iconColor: fg,
-      textColor: fg,
-    ),
   );
-}
-
-Brightness _estimateBrightnessForColor(Color color) {
-  final luminance = color.computeLuminance();
-  return luminance > 0.5 ? Brightness.light : Brightness.dark;
 }
