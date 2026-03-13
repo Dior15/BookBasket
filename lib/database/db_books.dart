@@ -47,4 +47,19 @@ extension Books on DB {
     }
     return(false);
   }
+
+  /// Pass search bar, receive list of book file names that can be used to display them as search results
+  Future<List<String>> getBookByTitle(String title) async {
+    final results = await DB._database.query(
+      "books",
+      columns: ["fileName"],
+      where: "LOWER(title) LIKE LOWER(?)",
+      whereArgs: [title]
+    );
+    List<String> fileNames = [];
+    for (Map<String, Object?> fileName in results) {
+      fileNames.add(fileName["fileName"].toString());
+    }
+    return(fileNames);
+  }
 }
