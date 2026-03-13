@@ -70,7 +70,7 @@ class CatalogState extends State<Catalog> with CoverLoader{
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       height: 120,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         gradient: const LinearGradient(
           colors: [
             Color(0xFF1A237E), // deep indigo

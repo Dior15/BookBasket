@@ -37,6 +37,8 @@ class ManageUsers extends StatefulWidget {
 }
 
 class _ManageUsersState extends State<ManageUsers> {
+  static const _accent = Color(0xFF3949AB);
+
   @override
   void initState() {
     super.initState();
@@ -63,6 +65,7 @@ class _ManageUsersState extends State<ManageUsers> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(user == null ? "Add User" : "Edit User"),
         content: SingleChildScrollView(
           child: Column(
@@ -135,6 +138,7 @@ class _ManageUsersState extends State<ManageUsers> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text("Delete User"),
         content: const Text("Are you sure you want to delete this user?"),
         actions: [
@@ -172,14 +176,24 @@ class _ManageUsersState extends State<ManageUsers> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
-            child: Align(
-              alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
               child: Text(
                 "Total Users: ${UserStore.userList.length}",
                 style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
@@ -191,11 +205,19 @@ class _ManageUsersState extends State<ManageUsers> {
                 final user = UserStore.userList[index];
 
                 return Card(
-                  margin:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   child: ListTile(
-                    leading: const Icon(Icons.person),
-                    title: Text(user.name),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: _accent.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.person_rounded, color: _accent),
+                    ),
+                    title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.w700)),
                     subtitle: Text(user.email),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -217,12 +239,11 @@ class _ManageUsersState extends State<ManageUsers> {
                         ),
                         const SizedBox(width: 8),
                         IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () =>
-                              _addOrEditUser(user: user, index: index),
+                          icon: const Icon(Icons.edit_rounded),
+                          onPressed: () => _addOrEditUser(user: user, index: index),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete),
+                          icon: const Icon(Icons.delete_outline_rounded),
                           onPressed: () => _confirmDelete(index),
                         ),
                       ],
@@ -236,7 +257,7 @@ class _ManageUsersState extends State<ManageUsers> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _addOrEditUser(),
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add_rounded),
       ),
     );
   }

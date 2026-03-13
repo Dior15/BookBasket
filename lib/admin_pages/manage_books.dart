@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../admin.dart';
 import '../basket.dart';
-import 'manage_users.dart';
-import 'reports.dart';
-import 'system_settings.dart';
 import '../database/db.dart';
 
 /// ------------------------------
@@ -44,6 +40,7 @@ class ManageBooks extends StatefulWidget {
 
 class _ManageBooksState extends State<ManageBooks>
 {
+  static const _accent = Color(0xFF3949AB);
 
   void _addOrEditBook({Book? book, int? index}) {
     final titleController =
@@ -56,6 +53,7 @@ class _ManageBooksState extends State<ManageBooks>
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(book == null ? "Add Book" : "Edit Book"),
         content: SingleChildScrollView(
           child: Column(
@@ -150,31 +148,81 @@ class _ManageBooksState extends State<ManageBooks>
       appBar: AppBar(
         title: const Text("Manage Books"),
       ),
-      body: ListView.builder(
-        itemCount: BookStore.books.length,
-        itemBuilder: (context, index) {
-          final book = BookStore.books[index];
-
-          return Dismissible(
-            key: Key(book.title + index.toString()),
-            background: Container(color: Colors.red),
-            onDismissed: (_) => _deleteBook(index),
-            child: ListTile(
-              leading: const Icon(Icons.book),
-              title: Text(book.title),
-              subtitle: Text("${book.author} • ${book.epubFile}"),
-              trailing: IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: () =>
-                    _addOrEditBook(book: book, index: index),
+      body: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Text(
+                'Manage Books (${BookStore.books.length})',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
-          );
-        },
+            const SizedBox(height: 12),
+            Expanded(
+              child: BookStore.books.isEmpty
+                  ? const Center(child: Text('No books available yet.'))
+                  : ListView.builder(
+                      itemCount: BookStore.books.length,
+                      itemBuilder: (context, index) {
+                        final book = BookStore.books[index];
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Dismissible(
+                            key: Key(book.title + index.toString()),
+                            background: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onDismissed: (_) => _deleteBook(index),
+                            child: Card(
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                leading: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: _accent.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(Icons.book_rounded, color: _accent),
+                                ),
+                                title: Text(book.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                subtitle: Text("${book.author} • ${book.epubFile}"),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.edit_rounded),
+                                  onPressed: () => _addOrEditBook(book: book, index: index),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _addOrEditBook(),
-        child: const Icon(Icons.add),
+      onPressed: () => _addOrEditBook(),
+      child: const Icon(Icons.add_rounded),
       ),
     );
   }

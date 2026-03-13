@@ -81,9 +81,25 @@ class _DrawerShellState extends State<DrawerShell> {
   @override
   Widget build(BuildContext context) {
     final dest = _destinations[_index];
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: Text(dest.title),
+        foregroundColor: Colors.white,
+        flexibleSpace: const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF1A237E),
+                Color(0xFF3949AB),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        surfaceTintColor: Colors.transparent,
+        shadowColor: colorScheme.shadow.withOpacity(0.12),
         actions: dest.actionsBuilder?.call(context),
       ),
       drawer: AppDrawer(

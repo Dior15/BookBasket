@@ -42,8 +42,8 @@ class BookBasketApp extends StatelessWidget {
       darkTheme = advancedTheme;
       themeMode = ThemeMode.light;
     } else {
-      lightTheme = ThemeData.light();
-      darkTheme = ThemeData.dark();
+      lightTheme = buildBookBasketTheme(Brightness.light);
+      darkTheme = buildBookBasketTheme(Brightness.dark);
       themeMode = themeNotifier.themeType == ThemeType.light
           ? ThemeMode.light
           : ThemeMode.dark;

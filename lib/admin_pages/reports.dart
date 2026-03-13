@@ -84,24 +84,49 @@ class _ReportsState extends State<Reports> {
       ),
       body: Column(
         children: [
-          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: const Text(
+                'Reports & Issues',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
 
           /// ------------------------------
           /// FILTER BUTTONS
           /// ------------------------------
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: ["All", "Pending", "Resolved"].map((filter) {
-              return ChoiceChip(
-                label: Text(filter),
-                selected: selectedFilter == filter,
-                onSelected: (_) {
-                  setState(() {
-                    selectedFilter = filter;
-                  });
-                },
-              );
-            }).toList(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: ["All", "Pending", "Resolved"].map((filter) {
+                return ChoiceChip(
+                  label: Text(filter),
+                  selected: selectedFilter == filter,
+                  onSelected: (_) {
+                    setState(() {
+                      selectedFilter = filter;
+                    });
+                  },
+                );
+              }).toList(),
+            ),
           ),
 
           const SizedBox(height: 16),
@@ -116,12 +141,19 @@ class _ReportsState extends State<Reports> {
                 final report = filteredReports[index];
 
                 return Card(
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
+                  margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   child: ListTile(
                     isThreeLine: true,
-                    leading: const Icon(Icons.report_problem,
-                        color: Colors.deepPurple),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3949AB).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.report_problem_rounded, color: Color(0xFF3949AB)),
+                    ),
                     title: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -156,7 +188,7 @@ class _ReportsState extends State<Reports> {
                       ],
                     ),
                     trailing: IconButton(
-                      icon: const Icon(Icons.check_circle_outline),
+                      icon: const Icon(Icons.check_circle_outline_rounded),
                       onPressed: () => _toggleStatus(index),
                       tooltip: 'Mark as Resolved/Pending',
                     ),

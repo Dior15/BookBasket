@@ -58,23 +58,111 @@ class BasketState extends State<Basket> {
     );
   }
 
+  Widget _basketHero(int count) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF1A237E),
+            Color(0xFF3949AB),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Your Basket',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$count book${count == 1 ? '' : 's'} ready to read',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.14),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.shopping_basket_rounded, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // const cardColor = Color.fromARGB(255, 138, 101, 236);
     const cardColor = Color.fromARGB(10, 0, 0, 0);
 
-    return GridView.builder(
-        padding: const EdgeInsets.all(10.0),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-          childAspectRatio: 0.6666,
-        ),
-        itemCount: BasketContentManager.items.length,
-        itemBuilder: (context, index) {
-          final title = BasketContentManager.items[index];
-          final heroTag = "basket-$index";
+    return Column(
+      children: [
+        _basketHero(BasketContentManager.items.length),
+        Expanded(
+          child: BasketContentManager.items.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF3949AB).withOpacity(0.10),
+                        ),
+                        child: const Icon(
+                          Icons.shopping_basket_outlined,
+                          color: Color(0xFF3949AB),
+                          size: 34,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Your basket is empty',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                      ),
+                    ],
+                  ),
+                )
+              : GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: 0.6666,
+                  ),
+                  itemCount: BasketContentManager.items.length,
+                  itemBuilder: (context, index) {
+                    final title = BasketContentManager.items[index];
+                    final heroTag = "basket-$index";
 
           // List<int> bytes = targetFile.readAsBytes();
 
@@ -82,44 +170,59 @@ class BasketState extends State<Basket> {
           // Opens a book and reads all of its content into memory
 //           EpubBook epubBook = await EpubReader.readBook(bytes);
 
-          return GestureDetector(
-            onLongPressStart: (details) {
-              showMenu(
-                context: context,
-                position: RelativeRect.fromLTRB(
-                  details.globalPosition.dx,
-                  details.globalPosition.dy,
-                  details.globalPosition.dx,
-                  details.globalPosition.dy
+                    return GestureDetector(
+                      onLongPressStart: (details) {
+                        showMenu(
+                          context: context,
+                          position: RelativeRect.fromLTRB(
+                            details.globalPosition.dx,
+                            details.globalPosition.dy,
+                            details.globalPosition.dx,
+                            details.globalPosition.dy,
+                          ),
+                          items: [
+                            PopupMenuItem(
+                              value: "return",
+                              child: Text("Return ${title.substring(0, title.length - 5)}"),
+                            )
+                          ],
+                        ).then((value) async {
+                          if (value == "return") {
+                            DB db = await DB.getReference();
+                            await db.checkInBook(await AuthService.getEmail() as String, title);
+                            await context.read<BasketContentManager>().reload();
+                            setState(() {});
+                          }
+                        });
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          color: Theme.of(context).colorScheme.surface,
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(4),
+                        child: BookCard(
+                          title: title,
+                          color: cardColor,
+                          heroTag: heroTag,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => EpubLoaderPage(
+                                epubAssetPath: "assets/books/${BasketContentManager.items[index]}",
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                items: [
-                  PopupMenuItem(
-                    value: "return",
-                    child: Text("Return ${title.substring(0, title.length-5)}")
-                  )
-                ]
-              ).then((value) async {
-                if (value == "return") {
-                  DB db = await DB.getReference();
-                  await db.checkInBook(await AuthService.getEmail() as String, title);
-                  await context.read<BasketContentManager>().reload();
-                  setState(() {});
-                }
-              });
-            },
-
-            child: BookCard(
-              title: title,
-              color: cardColor,
-              heroTag: heroTag,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => EpubLoaderPage(epubAssetPath: "assets/books/${BasketContentManager.items[index]}",))
-              ),
-            )
-          );
-        },
-
+        ),
+      ],
     );
   }
 }

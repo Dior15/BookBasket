@@ -10,23 +10,55 @@ class AdminPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Admin Dashboard"),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: GridView.count(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          children: const [
-            AdminCard(icon: Icons.book, title: "Manage Books"),
-            AdminCard(icon: Icons.people, title: "Manage Users"),
-            AdminCard(icon: Icons.analytics, title: "Reports"),
-            AdminCard(icon: Icons.settings, title: "System Settings"),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Admin Dashboard',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 20,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Manage content, users, reports, and app settings',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Expanded(
+            child: GridView.count(
+              crossAxisCount: 2,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+              children: const [
+                AdminCard(icon: Icons.book_rounded, title: "Manage Books"),
+                AdminCard(icon: Icons.people_alt_rounded, title: "Manage Users"),
+                AdminCard(icon: Icons.analytics_rounded, title: "Reports"),
+                AdminCard(icon: Icons.settings_suggest_rounded, title: "System Settings"),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -42,53 +74,63 @@ class AdminCard extends StatelessWidget {
     required this.title,
   });
 
+  void _handleTap(BuildContext context) {
+    if (title == "Manage Books") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ManageBooks(),
+        ),
+      );
+    } else if (title == "Manage Users") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ManageUsers(),
+        ),
+      );
+    } else if (title == "Reports") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const Reports(),
+        ),
+      );
+    } else if (title == "System Settings") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const SystemSettings(),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    const accent = Color(0xFF3949AB);
     return Card(
-      elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.6),
+        ),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          if (title == "Manage Books") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ManageBooks(),
-              ),
-            );
-          }
-          else if (title == "Manage Users") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const ManageUsers(),
-              ),
-            );
-          }
-          else if (title == "Reports") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const Reports(),
-              ),
-            );
-          }
-          else if (title == "System Settings") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const SystemSettings(),
-              ),
-            );
-          }
-        },
+        onTap: () => _handleTap(context),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 40, color: Colors.deepPurple),
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: accent.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, size: 30, color: accent),
+            ),
             const SizedBox(height: 12),
             Text(
               title,
