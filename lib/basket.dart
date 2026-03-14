@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:epub_parser/epub_parser.dart' hide Image;
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
 
 import 'animations/app_page_route.dart';
 import 'animations/staggered_in.dart';
@@ -10,6 +12,7 @@ import 'animations/book_details_page.dart';
 import 'ereader/epub_loader.dart';
 import 'database/db.dart';
 import 'auth_service.dart';
+import 'map/reading_marker.dart';
 
 class Basket extends StatefulWidget {
   const Basket({super.key});
@@ -116,6 +119,74 @@ class BasketState extends State<Basket> {
     );
   }
 
+  Future<void> _saveReadingLocation(String bookTitle) async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+      if (permission == LocationPermission.deniedForever) return;
+
+      Position? position = await Geolocator.getLastKnownPosition();
+      position ??= await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.low,
+        timeLimit: const Duration(seconds: 5),
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      final markerStrings = prefs.getStringList('reading_markers')?.toList() ?? [];
+
+      // Convert saved strings back into Marker objects
+      List<ReadingMarker> existingMarkers = markerStrings.map((m) => ReadingMarker.fromJson(m)).toList();
+
+      bool locationFound = false;
+
+      // Check if we are within ~1km of an existing marker
+      for (int i = 0; i < existingMarkers.length; i++) {
+        final marker = existingMarkers[i];
+
+        if ((marker.latitude - position.latitude).abs() < 0.01 &&
+            (marker.longitude - position.longitude).abs() < 0.01) {
+
+          locationFound = true; // We found a nearby marker!
+
+          // Check if this book is already in this marker's list
+          if (!marker.bookTitles.contains(bookTitle)) {
+            marker.bookTitles.add(bookTitle); // Add the new book
+            existingMarkers[i] = marker; // Update the list
+            debugPrint("SUCCESS: Added '$bookTitle' to existing marker at ${marker.latitude}, ${marker.longitude}");
+          } else {
+            debugPrint("IGNORED: '$bookTitle' is already recorded at this location.");
+          }
+          break; // Stop checking other markers
+        }
+      }
+
+      // If no marker was within 1km, create a brand new one
+      if (!locationFound) {
+        final newMarker = ReadingMarker(
+          bookTitles: [bookTitle],
+          latitude: position.latitude,
+          longitude: position.longitude,
+          timestamp: DateTime.now(),
+        );
+        existingMarkers.add(newMarker);
+        debugPrint("SUCCESS: Created NEW marker for '$bookTitle' at ${position.latitude}, ${position.longitude}");
+      }
+
+      // Save the updated list back to SharedPreferences
+      final updatedMarkerStrings = existingMarkers.map((m) => m.toJson()).toList();
+      await prefs.setStringList('reading_markers', updatedMarkerStrings);
+
+    } catch (e) {
+      debugPrint('Location save failed: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // const cardColor = Color.fromARGB(255, 138, 101, 236);
@@ -208,14 +279,19 @@ class BasketState extends State<Basket> {
                           title: title,
                           color: cardColor,
                           heroTag: heroTag,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => EpubLoaderPage(
-                                epubAssetPath: "assets/books/${BasketContentManager.items[index]}",
+                          onTap: () {
+                            _saveReadingLocation(title);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    EpubLoaderPage(
+                                      epubAssetPath: "assets/books/${BasketContentManager
+                                          .items[index]}",
+                                    ),
                               ),
-                            ),
-                          ),
+                            );
+                          }
                         ),
                       ),
                     );

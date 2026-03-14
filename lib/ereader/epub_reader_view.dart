@@ -585,12 +585,12 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
                 style: TextStyle(color: themeColors.text, fontSize: 16),
                 underline: Container(height: 1, color: themeColors.text.withOpacity(0.5)),
                 iconEnabledColor: themeColors.text,
-                items: ['Arial', 'Times New Roman', 'Comic Sans MS', 'Bebas Neue', 'Special Elite']
+                items: ['System Default', 'Times New Roman', 'Comic Sans MS', 'Bebas Neue', 'Special Elite']
                     .map((String font) => DropdownMenuItem<String>(
                   value: font,
                   child: Text(
                       font,
-                      style: TextStyle(fontFamily: font == 'Arial' ? null : font)
+                      style: TextStyle(fontFamily: font == 'System Default' ? null : font)
                   ),
                 ))
                     .toList(),

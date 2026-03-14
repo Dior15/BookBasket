@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'package:bookbasket/map/map.dart';
+import 'package:flutter/material.dart';
 
 import '../admin.dart';
 import '../auth_service.dart';
@@ -48,6 +49,11 @@ class _DrawerShellState extends State<DrawerShell> {
         icon: Icons.shopping_basket,
         builder: (_) => Basket(),
         // builder: (_) => Basket(key: UniqueKey()), // Unique key forces the old state to be destroyed and a new one is created
+      ),
+      DrawerDestination(
+          title: 'Reading Map',
+          icon: Icons.map,
+          builder: (_) => MapPage(),
       ),
       DrawerDestination(
         title: 'Preferences',
