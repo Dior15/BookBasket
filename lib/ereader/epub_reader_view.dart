@@ -59,13 +59,15 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   PageController? _pageController;
   int _currentPage = 0;
 
-  // NEW: Store bookmarked page indices
   Set<int> _bookmarks = {};
 
   EpubParser _parser = EpubParser();
   ReaderTheme _readerTheme = ReaderTheme.light;
 
   String _fontFamily = 'System Default';
+  double _fontSize = 18.0;
+
+  Timer? _fontSizeDebounceTimer;
 
   @override
   void initState() {
@@ -74,10 +76,18 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     _prepareBook();
   }
 
+  @override
+  void dispose() {
+    _fontSizeDebounceTimer?.cancel();
+    _pageController?.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final themeName = prefs.getString('reader_theme') ?? 'light';
     final savedFontFamily = prefs.getString('reader_font_family') ?? 'System Default';
+    final savedFontSize = prefs.getDouble('reader_font_size') ?? 18.0;
 
     if (mounted) {
       setState(() {
@@ -86,9 +96,11 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
           orElse: () => ReaderTheme.light,
         );
         _fontFamily = savedFontFamily;
+        _fontSize = savedFontSize;
 
         _parser = EpubParser(
           fontFamily: _fontFamily == 'System Default' ? null : _fontFamily,
+          fontSize: _fontSize,
         );
       });
     }
@@ -104,7 +116,11 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     await prefs.setString('reader_font_family', family);
   }
 
-  // NEW: Load persistent bookmarks
+  Future<void> _saveFontSize(double size) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('reader_font_size', size);
+  }
+
   Future<void> _loadBookmarks() async {
     final prefs = await SharedPreferences.getInstance();
     if (_title != null) {
@@ -119,7 +135,6 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     }
   }
 
-  // NEW: Save persistent bookmarks
   Future<void> _saveBookmarks() async {
     final prefs = await SharedPreferences.getInstance();
     if (_title != null) {
@@ -145,7 +160,6 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
 
       _title = book.Title ?? "EPUB Reader";
 
-      // Load bookmarks for this specific book
       await _loadBookmarks();
 
       if (mounted) setState(() {});
@@ -202,12 +216,51 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
 
       _parser = EpubParser(
         fontFamily: newFamily == 'System Default' ? null : newFamily,
+        fontSize: _fontSize,
       );
 
       _isInitialized = false;
     });
 
     _saveFontFamily(newFamily);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      int fallbackIndex = _pages.indexWhere((p) => p.sectionIndex == currentSection);
+      if (fallbackIndex == -1) fallbackIndex = 0;
+      await prefs.setInt('epub_pos_${_title!.hashCode}', fallbackIndex);
+    });
+  }
+
+  void _changeFontSize(double newSize) {
+    if (_fontSize == newSize) return;
+
+    setState(() {
+      _fontSize = newSize;
+    });
+
+    _fontSizeDebounceTimer?.cancel();
+
+    _fontSizeDebounceTimer = Timer(const Duration(seconds: 1), () {
+      _applyResizedFont(newSize);
+    });
+  }
+
+  void _applyResizedFont(double newSize) {
+    if (!mounted || !_isInitialized) return;
+
+    int currentSection = _pages.isNotEmpty ? _pages[_currentPage].sectionIndex : 0;
+
+    setState(() {
+      _parser = EpubParser(
+        fontFamily: _fontFamily == 'System Default' ? null : _fontFamily,
+        fontSize: newSize,
+      );
+
+      _isInitialized = false;
+    });
+
+    _saveFontSize(newSize);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final prefs = await SharedPreferences.getInstance();
@@ -255,7 +308,15 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
       appBar: AppBar(
         title: Text(_isInitialized && _pages.isNotEmpty ? _sections[_pages[_currentPage].sectionIndex].title : "Loading..."),
         backgroundColor: themeColors.background,
-        foregroundColor: themeColors.text,
+        foregroundColor: themeColors.text, // May get overridden by global theme
+        // explicitly override the styles to detach from the custom global theme
+        iconTheme: IconThemeData(color: themeColors.text),
+        actionsIconTheme: IconThemeData(color: themeColors.text),
+        titleTextStyle: TextStyle(
+          color: themeColors.text,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
         elevation: 0,
         actions: [
           if (_isInitialized)
@@ -298,8 +359,8 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
                   itemBuilder: (context, index) => _buildPageContent(index),
                 ),
                 _buildTapZones(),
-                _buildBookmarkIcon(),     // NEW: Render the bookmark ribbon
-                _buildBookmarkTapZone(),  // NEW: Tap zone specifically for the bookmark
+                _buildBookmarkIcon(),
+                _buildBookmarkTapZone(),
                 _buildNavigationArrows(),
               ],
             );
@@ -352,11 +413,10 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     );
   }
 
-  // NEW: Tap zone exclusively for toggling the bookmark in the top right corner
   Widget _buildBookmarkTapZone() {
     return Positioned(
       top: 0,
-      right: 0,
+      left: 0,
       width: 100,
       height: 100,
       child: GestureDetector(
@@ -375,18 +435,17 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     );
   }
 
-  // NEW: Visual indicator if the current page is bookmarked
   Widget _buildBookmarkIcon() {
     if (!_bookmarks.contains(_currentPage)) return const SizedBox.shrink();
 
     final themeColors = ReaderThemeColors.get(_readerTheme);
     return Positioned(
       top: 0,
-      right: 24, // Aligned with your 24px HTML padding
+      left: 24,
       child: Icon(
         Icons.bookmark,
         size: 48,
-        color: Color(0xFF1A237E).withOpacity(0.5),
+        color: themeColors.text.withOpacity(0.4),
       ),
     );
   }
@@ -471,10 +530,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     );
   }
 
-  // UPDATED: Now uses a DefaultTabController for Chapters and Bookmarks
   Widget _buildDrawer(ReaderThemeColors themeColors) {
-    // Sort and filter out any bookmarks that are mathematically out of bounds
-    // (which can happen if font size changes result in fewer pages)
     final validBookmarks = _bookmarks.where((b) => b < _pages.length).toList()..sort();
 
     return Drawer(
@@ -496,7 +552,6 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
               Expanded(
                 child: TabBarView(
                   children: [
-                    // Tab 1: Chapters
                     ListView.builder(
                       itemCount: _sections.length,
                       itemBuilder: (context, index) {
@@ -512,11 +567,10 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
                         );
                       },
                     ),
-                    // Tab 2: Bookmarks
                     validBookmarks.isEmpty
                         ? Center(
                       child: Text(
-                        "No bookmarks yet.\nTap the top right corner of a page to add one.",
+                        "No bookmarks yet.\nTap the top left corner of a page to add one.",
                         textAlign: TextAlign.center,
                         style: TextStyle(color: themeColors.text.withOpacity(0.7)),
                       ),
@@ -529,7 +583,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
                         String chapterTitle = _sections[sectionIndex].title;
 
                         return ListTile(
-                          leading: Icon(Icons.bookmark, color: Color(0xFF1A237E)),
+                          leading: Icon(Icons.bookmark, color: themeColors.text),
                           title: Text(
                               "Page ${pageIndex + 1}",
                               style: TextStyle(color: themeColors.text)
@@ -585,8 +639,13 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
                 style: TextStyle(color: themeColors.text, fontSize: 16),
                 underline: Container(height: 1, color: themeColors.text.withOpacity(0.5)),
                 iconEnabledColor: themeColors.text,
-                items: ['System Default', 'Times New Roman', 'Comic Sans MS', 'Bebas Neue', 'Special Elite']
-                    .map((String font) => DropdownMenuItem<String>(
+                items: [
+                  'System Default',
+                  'Times New Roman',
+                  'Comic Sans MS',
+                  'Bebas Neue',
+                  'Special Elite',
+                ].map((String font) => DropdownMenuItem<String>(
                   value: font,
                   child: Text(
                       font,
@@ -597,9 +656,33 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
                 onChanged: (String? newValue) {
                   if (newValue != null) {
                     _changeFontFamily(newValue);
-                    Navigator.pop(context);
                   }
                 },
+              ),
+            ),
+
+            ListTile(
+              title: Text("Text Size", style: TextStyle(color: themeColors.text)),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.remove, color: themeColors.text),
+                    onPressed: () {
+                      if (_fontSize > 10.0) _changeFontSize(_fontSize - 2.0);
+                    },
+                  ),
+                  Text(
+                    "${_fontSize.toInt()}",
+                    style: TextStyle(color: themeColors.text, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.add, color: themeColors.text),
+                    onPressed: () {
+                      if (_fontSize < 40.0) _changeFontSize(_fontSize + 2.0);
+                    },
+                  ),
+                ],
               ),
             ),
 
