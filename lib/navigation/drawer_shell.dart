@@ -8,8 +8,8 @@ import '../catalog.dart';
 import '../login_page.dart';
 import '../preferences_page.dart';
 import '../search.dart';
-import '../database/db.dart';
 import 'app_drawer.dart';
+import '../friends_list.dart';
 
 class DrawerShell extends StatefulWidget {
   /// When [isAdmin] is true the Admin panel destination is included.
@@ -48,12 +48,17 @@ class _DrawerShellState extends State<DrawerShell> {
         title: 'Basket',
         icon: Icons.shopping_basket,
         builder: (_) => Basket(),
-        // builder: (_) => Basket(key: UniqueKey()), // Unique key forces the old state to be destroyed and a new one is created
+        // builder: (_) => Basket(key: UniqueKey()),
       ),
       DrawerDestination(
-          title: 'Reading Map',
-          icon: Icons.map,
-          builder: (_) => MapPage(),
+        title: 'Reading Map',
+        icon: Icons.map,
+        builder: (_) => MapPage(),
+      ),
+      DrawerDestination(
+        title: 'Friends',
+        icon: Icons.groups_rounded,
+        builder: (_) => const FriendsListPage(),
       ),
       DrawerDestination(
         title: 'Preferences',
@@ -80,7 +85,7 @@ class _DrawerShellState extends State<DrawerShell> {
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginPage()),
-      (route) => false,
+          (route) => false,
     );
   }
 
@@ -88,6 +93,7 @@ class _DrawerShellState extends State<DrawerShell> {
   Widget build(BuildContext context) {
     final dest = _destinations[_index];
     final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(dest.title),
@@ -117,7 +123,7 @@ class _DrawerShellState extends State<DrawerShell> {
       body: IndexedStack(
         index: _index,
         children: _destinations
-            .map((d) => Builder(builder: d.builder))
+            .map((destination) => Builder(builder: destination.builder))
             .toList(),
       ),
     );
