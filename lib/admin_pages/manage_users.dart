@@ -7,7 +7,7 @@ import '../database/db.dart';
 class AppUser {
   String name;
   String email;
-  String role; // "User" or "Admin"
+  String role;
 
   AppUser({
     required this.name,
@@ -17,17 +17,10 @@ class AppUser {
 }
 
 /// ------------------------------
-/// SHARED USER STORE (UI ONLY)
-/// ------------------------------
 class UserStore {
-  static List<AppUser> userList = [
-    // AppUser(name: "Book Basket User", email: "user@bookbasket.com", role: "User"),
-    // AppUser(name: "Book Basket Admin User", email: "admin@bookbasket.com", role: "Admin"),
-  ];
+  static List<AppUser> userList = [];
 }
 
-/// ------------------------------
-/// MANAGE USERS PAGE
 /// ------------------------------
 class ManageUsers extends StatefulWidget {
   const ManageUsers({super.key});
@@ -45,21 +38,38 @@ class _ManageUsersState extends State<ManageUsers> {
     getUsers();
   }
 
+  /// ------------------------------
+  /// FIXED: CORRECT DATA MAPPING
+  /// ------------------------------
   Future<void> getUsers() async {
     UserStore.userList = [];
     DB db = await DB.getReference();
+
     List<Map<String, Object?>> users = await db.getUsers();
+
     for (Map<String, Object?> user in users) {
-      UserStore.userList.add(AppUser(name: user["username"].toString(), email: user["password"].toString(), role: user["isAdmin"].toString() == "1" ? "Admin" : "User"));
+      UserStore.userList.add(
+        AppUser(
+          name: user["username"].toString(), // display name
+          email: user["username"].toString(), // email = username
+          role: user["isAdmin"].toString() == "1" ? "Admin" : "User",
+        ),
+      );
     }
+
     setState(() {});
   }
 
+  /// ------------------------------
+  /// ADD / EDIT USER (FIXED)
+  /// ------------------------------
   void _addOrEditUser({AppUser? user, int? index}) {
     final nameController =
     TextEditingController(text: user != null ? user.name : "");
     final emailController =
     TextEditingController(text: user != null ? user.email : "");
+    final passwordController = TextEditingController(); // ✅ NEW
+
     String selectedRole = user != null ? user.role : "User";
 
     showDialog(
@@ -74,11 +84,23 @@ class _ManageUsersState extends State<ManageUsers> {
                 controller: nameController,
                 decoration: const InputDecoration(labelText: "Name"),
               ),
+
               TextField(
                 controller: emailController,
                 decoration: const InputDecoration(labelText: "Email"),
               ),
+
+              /// ✅ NEW PASSWORD FIELD
+              if (user == null)
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration:
+                  const InputDecoration(labelText: "Password"),
+                ),
+
               const SizedBox(height: 12),
+
               DropdownButtonFormField<String>(
                 value: selectedRole,
                 items: const [
@@ -101,21 +123,34 @@ class _ManageUsersState extends State<ManageUsers> {
           ElevatedButton(
             onPressed: () async {
               DB db = await DB.getReference();
+
               if (user == null) {
-                // Add
-                db.addUser(emailController.text, "123", selectedRole == "Admin"); // THERE'S NO PASSWORD FIELD IN THE FORM, SO SETTING A DEFAULT PASSWORD OF 123
-                setState(() {
-                  UserStore.userList.add(
-                    AppUser(
-                      name: nameController.text,
-                      email: emailController.text,
-                      role: selectedRole,
-                    ),
+                /// ✅ FIXED ADD USER
+                if (emailController.text.isNotEmpty &&
+                    passwordController.text.isNotEmpty) {
+                  await db.addUser(
+                    emailController.text, // username/email
+                    passwordController.text, // password
+                    selectedRole == "Admin",
                   );
-                });
+
+                  setState(() {
+                    UserStore.userList.add(
+                      AppUser(
+                        name: nameController.text,
+                        email: emailController.text,
+                        role: selectedRole,
+                      ),
+                    );
+                  });
+                }
               } else {
-                // Update
-                db.changeIsAdmin(emailController.text, selectedRole == "Admin");
+                /// UPDATE ROLE ONLY
+                await db.changeIsAdmin(
+                  emailController.text,
+                  selectedRole == "Admin",
+                );
+
                 setState(() {
                   UserStore.userList[index!] = AppUser(
                     name: nameController.text,
@@ -134,11 +169,13 @@ class _ManageUsersState extends State<ManageUsers> {
     );
   }
 
+  /// ------------------------------
   void _confirmDelete(int index) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text("Delete User"),
         content: const Text("Are you sure you want to delete this user?"),
         actions: [
@@ -147,13 +184,18 @@ class _ManageUsersState extends State<ManageUsers> {
             child: const Text("Cancel"),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style:
+            ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               DB db = await DB.getReference();
-              db.deleteUser(UserStore.userList.elementAt(index).email);
+
+              await db.deleteUser(
+                  UserStore.userList[index].email);
+
               setState(() {
                 UserStore.userList.removeAt(index);
               });
+
               Navigator.pop(context);
             },
             child: const Text("Delete"),
@@ -167,12 +209,11 @@ class _ManageUsersState extends State<ManageUsers> {
     return role == "Admin" ? Colors.red : Colors.blue;
   }
 
+  /// ------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Manage Users"),
-      ),
+      appBar: AppBar(title: const Text("Manage Users")),
       body: Column(
         children: [
           Padding(
@@ -184,8 +225,6 @@ class _ManageUsersState extends State<ManageUsers> {
                 borderRadius: BorderRadius.circular(18),
                 gradient: const LinearGradient(
                   colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
                 ),
               ),
               child: Text(
@@ -205,19 +244,11 @@ class _ManageUsersState extends State<ManageUsers> {
                 final user = UserStore.userList[index];
 
                 return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  margin: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 6),
                   child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: _accent.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.person_rounded, color: _accent),
-                    ),
-                    title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    leading: const Icon(Icons.person),
+                    title: Text(user.name),
                     subtitle: Text(user.email),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -231,19 +262,16 @@ class _ManageUsersState extends State<ManageUsers> {
                           ),
                           child: Text(
                             user.role,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                            ),
+                            style: const TextStyle(color: Colors.white),
                           ),
                         ),
-                        const SizedBox(width: 8),
                         IconButton(
-                          icon: const Icon(Icons.edit_rounded),
-                          onPressed: () => _addOrEditUser(user: user, index: index),
+                          icon: const Icon(Icons.edit),
+                          onPressed: () =>
+                              _addOrEditUser(user: user, index: index),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded),
+                          icon: const Icon(Icons.delete),
                           onPressed: () => _confirmDelete(index),
                         ),
                       ],
@@ -257,7 +285,7 @@ class _ManageUsersState extends State<ManageUsers> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _addOrEditUser(),
-        child: const Icon(Icons.add_rounded),
+        child: const Icon(Icons.add),
       ),
     );
   }
