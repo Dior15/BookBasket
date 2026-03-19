@@ -38,7 +38,7 @@ class ThemeNotifier extends ChangeNotifier {
   void setDarkMode() {
     _themeType = ThemeType.dark;
     _backgroundColor = const LinearGradient(
-      colors: [Colors.black, Colors.black],
+      colors: [Color(0xFF1C1C1C), Color(0xFF000000)],
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
     );

@@ -42,7 +42,7 @@ class _PreferencesPageState extends State<PreferencesPage> {
     LinearGradient(colors: [Colors.red[900]!, Colors.black], begin: Alignment.topCenter, end: Alignment.bottomCenter),
     LinearGradient(colors: [Colors.blue[900]!, Colors.black], begin: Alignment.topCenter, end: Alignment.bottomCenter),
     LinearGradient(colors: [Colors.lightGreen[900]!, Colors.black], begin: Alignment.topCenter, end: Alignment.bottomCenter),
-    LinearGradient(colors: [Colors.black, Colors.black], begin: Alignment.topCenter, end: Alignment.bottomCenter),
+    LinearGradient(colors: [Color(0xFF1C1C1C), Colors.black], begin: Alignment.topCenter, end: Alignment.bottomCenter),
     LinearGradient(colors: [Colors.orange[900]!, Colors.black], begin: Alignment.topCenter, end: Alignment.bottomCenter),
     LinearGradient(colors: [Colors.purple[900]!, Colors.black], begin: Alignment.topCenter, end: Alignment.bottomCenter),
   ];
