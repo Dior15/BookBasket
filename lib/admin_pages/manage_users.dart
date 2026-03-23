@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../database/db.dart';
+import '../firebase_database/firebase_db.dart';
 
 /// ------------------------------
 /// USER MODEL
@@ -43,7 +44,8 @@ class _ManageUsersState extends State<ManageUsers> {
   /// ------------------------------
   Future<void> getUsers() async {
     UserStore.userList = [];
-    DB db = await DB.getReference();
+    // DB db = await DB.getReference();
+    FirebaseDB db = FirebaseDB.getReference();
 
     List<Map<String, Object?>> users = await db.getUsers();
 

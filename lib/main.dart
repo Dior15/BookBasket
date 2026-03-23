@@ -1,16 +1,24 @@
 import 'package:bookbasket/basket.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import "dart:io";
 import 'package:epub_parser/epub_parser.dart' hide Image;
 
 import 'auth_service.dart';
+import 'firebase_options.dart';
 import 'login_page.dart';
 import 'navigation/drawer_shell.dart';
 import 'themes/theme_builder.dart';
 import 'themes/theme_notifier.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(
     MultiProvider(
       providers: [
