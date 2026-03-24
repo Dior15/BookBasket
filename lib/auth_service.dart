@@ -1,5 +1,6 @@
+import 'package:bookbasket/firebase_database/firebase_db.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'database/db.dart';
+// import 'database/db.dart';
 
 class AuthService {
   static const _kLoggedIn = 'logged_in';
@@ -38,7 +39,8 @@ class AuthService {
     bool ok = false;
     bool admin = false;
 
-    DB db = await DB.getReference();
+    // DB db = await DB.getReference();
+    FirebaseDB db = FirebaseDB.getReference();
 
     if (await db.validateLogin(e, p)) {
       ok = true;

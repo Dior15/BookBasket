@@ -4,7 +4,8 @@ import 'animations/staggered_in.dart';
 import 'animations/book_details_page.dart';
 import 'animations/book_card.dart';
 import 'ereader/cover_loader.dart';
-import 'database/db.dart';
+// import 'database/db.dart';
+import 'firebase_database/firebase_db.dart';
 
 class Catalog extends StatefulWidget {
   const Catalog({super.key});
@@ -36,7 +37,8 @@ class CatalogState extends State<Catalog> with CoverLoader{
 
   // This needs to be called outside of initState because initState cannot be an async method itself
   void getBookFileNames() async {
-    DB db = await DB.getReference();
+    // DB db = await DB.getReference();
+    FirebaseDB db = FirebaseDB.getReference();
     _items = await db.getBookFileNames();
     setState(() {});
   }

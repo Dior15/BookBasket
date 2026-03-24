@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../basket.dart';
-import '../database/db.dart';
+// import '../database/db.dart';
+import '../firebase_database/firebase_db.dart';
 
 /// ------------------------------
 /// BOOK MODEL
@@ -87,7 +88,8 @@ class _ManageBooksState extends State<ManageBooks> {
                     authorController.text.isNotEmpty &&
                     fileController.text.isNotEmpty) {
                   // ADD
-                  DB db = await DB.getReference();
+                  // DB db = await DB.getReference();
+                  FirebaseDB db = FirebaseDB.getReference();
                   db.addNewBook(titleController.text,
                       authorController.text, fileController.text);
 
@@ -138,7 +140,8 @@ class _ManageBooksState extends State<ManageBooks> {
   void getBooks() async {
     BookStore.books = [];
 
-    DB db = await DB.getReference();
+    // DB db = await DB.getReference();
+    FirebaseDB db = FirebaseDB.getReference();
     List<Map<String, Object?>> books = await db.getBooks();
 
     for (Map<String, Object?> book in books) {
