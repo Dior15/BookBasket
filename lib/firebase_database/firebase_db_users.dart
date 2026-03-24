@@ -29,6 +29,7 @@ extension Users on FirebaseDB {
     QuerySnapshot<Map<String, dynamic>> query = await FirebaseDB._database
       .collection("users")
       .where("username", isEqualTo: username)
+      .limit(1)
       .get();
 
     return(query.docs.first["isAdmin"]);
@@ -39,6 +40,7 @@ extension Users on FirebaseDB {
     QuerySnapshot<Map<String, dynamic>> query = await FirebaseDB._database
         .collection("users")
         .where("username", isEqualTo: username)
+        .limit(1)
         .get();
 
     if (query.docs.first.exists) {
@@ -61,6 +63,7 @@ extension Users on FirebaseDB {
     QuerySnapshot<Map<String, dynamic>> query = await FirebaseDB._database
         .collection("users")
         .where("username", isEqualTo: username)
+        .limit(1)
         .get();
 
     if (query.docs.isNotEmpty) {

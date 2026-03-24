@@ -12,6 +12,7 @@ import 'animations/book_details_page.dart';
 import 'ereader/epub_loader.dart';
 import 'database/db.dart';
 import 'auth_service.dart';
+import 'firebase_database/firebase_db.dart';
 import 'map/reading_marker.dart';
 
 class Basket extends StatefulWidget {
@@ -44,7 +45,8 @@ class BasketState extends State<Basket> {
 
   // This needs to be called outside of initState because initState cannot be an async method itself
   void getBookFileNames() async {
-    DB db = await DB.getReference();
+    // DB db = await DB.getReference();
+    FirebaseDB db = FirebaseDB.getReference();
     BasketContentManager.items = await db.getBasketContents(await AuthService.getEmail() as String);
     // setState(() {});
   }
@@ -259,7 +261,8 @@ class BasketState extends State<Basket> {
                           ],
                         ).then((value) async {
                           if (value == "return") {
-                            DB db = await DB.getReference();
+                            // DB db = await DB.getReference();
+                            FirebaseDB db = FirebaseDB.getReference();
                             await db.checkInBook(await AuthService.getEmail() as String, title);
                             await context.read<BasketContentManager>().reload();
                             setState(() {});
@@ -308,7 +311,8 @@ class BasketContentManager extends ChangeNotifier {
   static List<String> items = [];
 
   Future<void> reload() async {
-    DB db = await DB.getReference();
+    // DB db = await DB.getReference();
+    FirebaseDB db = FirebaseDB.getReference();
     items = await db.getBasketContents(await AuthService.getEmail() as String);
     notifyListeners();
   }

@@ -37,6 +37,7 @@ extension Books on FirebaseDB {
     QuerySnapshot<Map<String, dynamic>> query = await FirebaseDB._database
         .collection("books")
         .where("fileName", isEqualTo: fileName)
+        .limit(1)
         .get();
 
     if (query.docs.first.exists) {

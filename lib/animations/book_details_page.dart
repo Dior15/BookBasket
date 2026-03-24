@@ -6,6 +6,7 @@ import '../basket.dart';
 import '../ereader/cover_loader.dart';
 import '../auth_service.dart';
 import '../database/db.dart';
+import '../firebase_database/firebase_db.dart';
 
 class BookDetailsPage extends StatelessWidget with CoverLoader{
   final String title;
@@ -93,8 +94,9 @@ class BookDetailsPage extends StatelessWidget with CoverLoader{
           TextButton(
             onPressed: () async {
               String? username = await AuthService.getEmail();
-              DB db = await DB.getReference();
-              int? checkoutID = await db.checkOutBook(username!, title);
+              // DB db = await DB.getReference();
+              FirebaseDB db = FirebaseDB.getReference();
+              String? checkoutID = await db.checkOutBook(username!, title);
               if (checkoutID == null) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
