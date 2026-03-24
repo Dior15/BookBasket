@@ -3,9 +3,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'auth_service.dart';
-import 'database/db.dart';
+// import 'database/db.dart';
 import 'friends/friend_model.dart';
 import 'friends/friends_storage.dart';
+import 'firebase_database/firebase_db.dart';
 
 enum FriendFilter { all, favorites, requests }
 
@@ -43,7 +44,8 @@ class _FriendsListPageState extends State<FriendsListPage> {
     final email = await AuthService.getEmail();
 
     try {
-      final db = await DB.getReference();
+      // final db = await DB.getReference();
+      final FirebaseDB db = FirebaseDB.getReference();
       final books = await db.getBooks();
       _bookTitles = books
           .map((book) => book['title']?.toString() ?? '')

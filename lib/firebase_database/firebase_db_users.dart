@@ -5,6 +5,7 @@ extension Users on FirebaseDB {
   Future<List<Map<String, dynamic>>> getUsers() async {
     QuerySnapshot<Map<String, dynamic>> query = await FirebaseDB._database
       .collection("users")
+      .orderBy("username")
       .get();
 
     return query.docs.map((document) {
@@ -23,6 +24,7 @@ extension Users on FirebaseDB {
     return(query.docs.length == 1);
   }
 
+  /// Checks if the passed user is an admin
   Future<bool> isAdmin(String username) async {
     QuerySnapshot<Map<String, dynamic>> query = await FirebaseDB._database
       .collection("users")
@@ -30,6 +32,21 @@ extension Users on FirebaseDB {
       .get();
 
     return(query.docs.first["isAdmin"]);
+  }
+
+  /// Changes the passed user to have the passed role
+  Future<void> changeIsAdmin(String username, bool isAdmin) async {
+    QuerySnapshot<Map<String, dynamic>> query = await FirebaseDB._database
+        .collection("users")
+        .where("username", isEqualTo: username)
+        .get();
+
+    if (query.docs.first.exists) {
+      await FirebaseDB._database
+        .collection("users")
+        .doc(query.docs.first.id)
+        .update({"isAdmin": isAdmin});
+    }
   }
 
   /// Add a user from the passed information
@@ -47,7 +64,7 @@ extension Users on FirebaseDB {
         .get();
 
     if (query.docs.isNotEmpty) {
-      FirebaseDB._database
+      await FirebaseDB._database
         .collection("users")
         .doc(query.docs.first.id)
         .delete();

@@ -1,5 +1,6 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import '../database/db.dart';
+// import '../database/db.dart';
 import '../firebase_database/firebase_db.dart';
 
 /// ------------------------------
@@ -124,7 +125,8 @@ class _ManageUsersState extends State<ManageUsers> {
           ),
           ElevatedButton(
             onPressed: () async {
-              DB db = await DB.getReference();
+              // DB db = await DB.getReference();
+              FirebaseDB db = FirebaseDB.getReference();
 
               if (user == null) {
                 /// ✅ FIXED ADD USER
@@ -189,7 +191,8 @@ class _ManageUsersState extends State<ManageUsers> {
             style:
             ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
-              DB db = await DB.getReference();
+              // DB db = await DB.getReference();
+              FirebaseDB db = FirebaseDB.getReference();
 
               await db.deleteUser(
                   UserStore.userList[index].email);
