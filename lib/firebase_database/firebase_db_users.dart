@@ -31,4 +31,26 @@ extension Users on FirebaseDB {
 
     return(query.docs.first["isAdmin"]);
   }
+
+  /// Add a user from the passed information
+  Future<void> addUser(String username, String password, bool isAdmin) async {
+    await FirebaseDB._database
+        .collection("users")
+        .add({"username": username, "password": password, "isAdmin": isAdmin});
+  }
+
+  /// Deletes the user based on the passed username
+  Future<void> deleteUser(String username) async {
+    QuerySnapshot<Map<String, dynamic>> query = await FirebaseDB._database
+        .collection("users")
+        .where("username", isEqualTo: username)
+        .get();
+
+    if (query.docs.isNotEmpty) {
+      FirebaseDB._database
+        .collection("users")
+        .doc(query.docs.first.id)
+        .delete();
+    }
+  }
 }
