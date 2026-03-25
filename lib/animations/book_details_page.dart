@@ -29,7 +29,7 @@ class _BookDetailsPageState extends State<BookDetailsPage> with CoverLoader {
   double? _avgRating;    // null = no ratings at all
   bool _loadingRating = true;
   bool _savingRating = false;
-  String? _userId;
+  String? _username;
 
   @override
   void initState() {
@@ -40,7 +40,7 @@ class _BookDetailsPageState extends State<BookDetailsPage> with CoverLoader {
   Future<void> _loadRatings() async {
     final email = await AuthService.getEmail();
     if (!mounted) return;
-    setState(() => _userId = email);
+    setState(() => _username = email);
 
     final db = FirebaseDB.getReference();
     final results = await Future.wait<dynamic>([
@@ -57,7 +57,7 @@ class _BookDetailsPageState extends State<BookDetailsPage> with CoverLoader {
   }
 
   Future<void> _setRating(int stars) async {
-    if (_userId == null || _savingRating) return;
+    if (_username == null || _savingRating) return;
 
     final removing = stars == _userRating; // tapped the already-selected star
     setState(() {
@@ -67,9 +67,9 @@ class _BookDetailsPageState extends State<BookDetailsPage> with CoverLoader {
 
     final db = FirebaseDB.getReference();
     if (removing) {
-      await db.deleteUserRating(_userId!, widget.title);
+      await db.deleteUserRating(_username!, widget.title);
     } else {
-      await db.setUserRating(_userId!, widget.title, stars);
+      await db.setUserRating(_username!, widget.title, stars);
     }
 
     // Refresh the average after saving

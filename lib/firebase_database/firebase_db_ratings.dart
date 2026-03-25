@@ -2,15 +2,15 @@ part of "firebase_db.dart";
 
 extension Ratings on FirebaseDB {
   /// Returns the document ID used for a user+book rating pair.
-  String _ratingDocId(String userId, String fileName) =>
-      "${userId}_$fileName";
+  String _ratingDocId(String username, String fileName) =>
+      "${username}_$fileName";
 
   /// Fetches the current user's rating for [fileName].
   /// Returns null if the user has not rated it yet.
-  Future<int?> getUserRating(String userId, String fileName) async {
+  Future<int?> getUserRating(String username, String fileName) async {
     final doc = await FirebaseDB._database
         .collection("ratings")
-        .doc(_ratingDocId(userId, fileName))
+        .doc(_ratingDocId(username, fileName))
         .get();
 
     if (doc.exists) {
@@ -21,12 +21,12 @@ extension Ratings on FirebaseDB {
 
   /// Saves (or overwrites) the user's rating for [fileName].
   Future<void> setUserRating(
-      String userId, String fileName, int rating) async {
+      String username, String fileName, int rating) async {
     await FirebaseDB._database
         .collection("ratings")
-        .doc(_ratingDocId(userId, fileName))
+        .doc(_ratingDocId(username, fileName))
         .set({
-      "userId": userId,
+      "username": username,
       "fileName": fileName,
       "rating": rating,
       "timestamp": FieldValue.serverTimestamp(),
@@ -34,10 +34,10 @@ extension Ratings on FirebaseDB {
   }
 
   /// Removes the user's rating for [fileName].
-  Future<void> deleteUserRating(String userId, String fileName) async {
+  Future<void> deleteUserRating(String username, String fileName) async {
     await FirebaseDB._database
         .collection("ratings")
-        .doc(_ratingDocId(userId, fileName))
+        .doc(_ratingDocId(username, fileName))
         .delete();
   }
 
