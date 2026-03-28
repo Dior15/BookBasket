@@ -31,6 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  file_selector: ^1.1.0
   # Theme switching stuff
   provider: ^6.0.5
   shared_preferences: ^2.2.2

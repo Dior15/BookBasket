@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_selector/file_selector.dart';
 
 import '../basket.dart';
-// import '../database/db.dart';
-import '../firebase_database/firebase_db.dart';
+import '../database/db.dart';
 
-/// ------------------------------
-/// BOOK MODEL
-/// ------------------------------
 class Book {
   String title;
   String author;
@@ -20,18 +17,10 @@ class Book {
   });
 }
 
-/// ------------------------------
-/// SHARED BOOK STORE (UI ONLY)
-/// ------------------------------
 class BookStore {
-  static List<Book> books = [
-    // Book(title: "Sample Book", author: "Admin", epubFile: "sample.epub"),
-  ];
+  static List<Book> books = [];
 }
 
-/// ------------------------------
-/// MANAGE BOOKS PAGE
-/// ------------------------------
 class ManageBooks extends StatefulWidget {
   const ManageBooks({super.key});
 
@@ -41,6 +30,22 @@ class ManageBooks extends StatefulWidget {
 
 class _ManageBooksState extends State<ManageBooks> {
   static const _accent = Color(0xFF3949AB);
+
+  Future<void> _pickEpubFile(TextEditingController fileController) async {
+    const XTypeGroup epubType = XTypeGroup(
+      label: 'EPUB',
+      extensions: ['epub'],
+    );
+
+    final XFile? file = await openFile(
+      acceptedTypeGroups: [epubType],
+    );
+
+    if (file != null) {
+      fileController.text = file.name;
+      // use file.path instead if you want the absolute path
+    }
+  }
 
   void _addOrEditBook({Book? book, int? index}) {
     final titleController =
@@ -53,8 +58,7 @@ class _ManageBooksState extends State<ManageBooks> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(book == null ? "Add Book" : "Edit Book"),
         content: SingleChildScrollView(
           child: Column(
@@ -69,9 +73,20 @@ class _ManageBooksState extends State<ManageBooks> {
               ),
               TextField(
                 controller: fileController,
-                decoration: const InputDecoration(
-                  labelText: "EPUB File Name",
+                readOnly: true,
+                decoration: InputDecoration(
+                  labelText: "EPUB File",
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.upload_file),
+                    onPressed: () => _pickEpubFile(fileController),
+                  ),
                 ),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton.icon(
+                onPressed: () => _pickEpubFile(fileController),
+                icon: const Icon(Icons.folder_open),
+                label: const Text("Choose EPUB from Device"),
               ),
             ],
           ),
@@ -83,30 +98,32 @@ class _ManageBooksState extends State<ManageBooks> {
           ),
           ElevatedButton(
             onPressed: () async {
+              if (titleController.text.isEmpty ||
+                  authorController.text.isEmpty ||
+                  fileController.text.isEmpty) {
+                return;
+              }
+
               if (book == null) {
-                if (titleController.text.isNotEmpty &&
-                    authorController.text.isNotEmpty &&
-                    fileController.text.isNotEmpty) {
-                  // ADD
-                  // DB db = await DB.getReference();
-                  FirebaseDB db = FirebaseDB.getReference();
-                  db.addNewBook(titleController.text,
-                      authorController.text, fileController.text);
+                DB db = await DB.getReference();
+                db.addNewBook(
+                  titleController.text,
+                  authorController.text,
+                  fileController.text,
+                );
 
-                  context.read<BasketContentManager>().reload();
+                context.read<BasketContentManager>().reload();
 
-                  setState(() {
-                    BookStore.books.add(
-                      Book(
-                        title: titleController.text,
-                        author: authorController.text,
-                        epubFile: fileController.text,
-                      ),
-                    );
-                  });
-                }
+                setState(() {
+                  BookStore.books.add(
+                    Book(
+                      title: titleController.text,
+                      author: authorController.text,
+                      epubFile: fileController.text,
+                    ),
+                  );
+                });
               } else {
-                // EDIT
                 setState(() {
                   BookStore.books[index!] = Book(
                     title: titleController.text,
@@ -140,8 +157,7 @@ class _ManageBooksState extends State<ManageBooks> {
   void getBooks() async {
     BookStore.books = [];
 
-    // DB db = await DB.getReference();
-    FirebaseDB db = FirebaseDB.getReference();
+    DB db = await DB.getReference();
     List<Map<String, Object?>> books = await db.getBooks();
 
     for (Map<String, Object?> book in books) {
@@ -209,16 +225,16 @@ class _ManageBooksState extends State<ManageBooks> {
                       onDismissed: (_) => _deleteBook(index),
                       child: Card(
                         child: ListTile(
-                          contentPadding:
-                          const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
                           leading: Container(
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
                               color: _accent.withOpacity(0.12),
-                              borderRadius:
-                              BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(
                               Icons.book_rounded,
@@ -228,15 +244,16 @@ class _ManageBooksState extends State<ManageBooks> {
                           title: Text(
                             book.title,
                             style: const TextStyle(
-                                fontWeight: FontWeight.w700),
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           subtitle: Text(
-                              "${book.author} • ${book.epubFile}"),
+                            "${book.author} • ${book.epubFile}",
+                          ),
                           trailing: IconButton(
-                            icon:
-                            const Icon(Icons.edit_rounded),
-                            onPressed: () => _addOrEditBook(
-                                book: book, index: index),
+                            icon: const Icon(Icons.edit_rounded),
+                            onPressed: () =>
+                                _addOrEditBook(book: book, index: index),
                           ),
                         ),
                       ),
