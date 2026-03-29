@@ -169,12 +169,15 @@ class CatalogState extends State<Catalog> with CoverLoader{
     required double width,
     required Color color,
     required List<String>? bookFileNames,
-  }) {
+  })
+  {
+    bookFileNames?.shuffle();
     return SizedBox(
       height: height,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: bookFileNames == null ? 5 : bookFileNames.length,
+        // itemCount: bookFileNames == null ? 5 : bookFileNames.length,
+        itemCount: 5,
         padding: const EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 5.0),
         itemBuilder: (context, index) {
           final title = bookFileNames == null ? "" : bookFileNames[index];
