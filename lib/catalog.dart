@@ -15,7 +15,7 @@ class Catalog extends StatefulWidget {
 }
 
 class CatalogState extends State<Catalog> with CoverLoader{
-  late List<String> _items = [];
+  late Future<List<String>> _items;
   // [
   //   "The Gunslinger.epub",
   //   "It Ends With Us.epub",
@@ -36,10 +36,10 @@ class CatalogState extends State<Catalog> with CoverLoader{
   }
 
   // This needs to be called outside of initState because initState cannot be an async method itself
-  void getBookFileNames() async {
+  Future<void> getBookFileNames() async {
     // DB db = await DB.getReference();
     FirebaseDB db = FirebaseDB.getReference();
-    _items = await db.getBookFileNames();
+    _items = db.getBookFileNames();
     setState(() {});
   }
 
@@ -168,15 +168,16 @@ class CatalogState extends State<Catalog> with CoverLoader{
     required double height,
     required double width,
     required Color color,
+    required List<String>? bookFileNames,
   }) {
     return SizedBox(
       height: height,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: _items.length,
+        itemCount: bookFileNames == null ? 5 : bookFileNames.length,
         padding: const EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 5.0),
         itemBuilder: (context, index) {
-          final title = _items[index];
+          final title = bookFileNames == null ? "" : bookFileNames[index];
           final heroTag = "$prefix-$index";
           // final heroTag = _items[index];
 
@@ -207,33 +208,78 @@ class CatalogState extends State<Catalog> with CoverLoader{
           children: [
             _heroBanner(),
             _sectionTitle("This Week's Featured"),
-            _horizontalRow(
-              prefix: "Featured Title",
-              count: 10,
-              height: 270,
-              width: 180,
-              // color: const Color.fromARGB(255, 0, 100, 255),
-              color: const Color.fromARGB(10, 0, 0, 0),
+            FutureBuilder(
+              future: _items,
+              builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
+                List<String>? listElements;
+                // Displays while the system is waiting for a response from the database
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  listElements = ["","","","",""];
+                } else if (snapshot.hasData) {
+                  listElements = snapshot.data;
+                } else {
+                  return Text("Failed to load books");
+                }
+                return _horizontalRow(
+                    prefix: "Featured Title",
+                    count: 10,
+                    height: 270,
+                    width: 180,
+                    // color: const Color.fromARGB(255, 0, 100, 255),
+                    color: const Color.fromARGB(10, 0, 0, 0),
+                    bookFileNames: listElements
+                );
+              },
             ),
             const Divider(height: 20, thickness: 2, indent: 20, endIndent: 20),
             _sectionTitle("Recommended For You"),
-            _horizontalRow(
-              prefix: "Recommended Title",
-              count: 10,
-              height: 180,
-              width: 120,
-              // color: const Color.fromARGB(255, 138, 101, 236),
-              color: const Color.fromARGB(10, 0, 0, 0),
+            FutureBuilder(
+              future: _items,
+              builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
+                List<String>? listElements;
+                // Displays while the system is waiting for a response from the database
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  listElements = ["","","","",""];
+                } else if (snapshot.hasData) {
+                  listElements = snapshot.data;
+                } else {
+                  return Text("Failed to load books");
+                }
+                return _horizontalRow(
+                  prefix: "Recommended Title",
+                  count: 10,
+                  height: 180,
+                  width: 120,
+                  // color: const Color.fromARGB(255, 138, 101, 236),
+                  color: const Color.fromARGB(10, 0, 0, 0),
+                  bookFileNames: listElements
+                );
+              },
             ),
             const Divider(height: 20, thickness: 2, indent: 20, endIndent: 20),
             _sectionTitle("Critically Acclaimed"),
-            _horizontalRow(
-              prefix: "Acclaimed Title",
-              count: 10,
-              height: 180,
-              width: 120,
-              // color: const Color.fromARGB(255, 143, 239, 111),
-              color: const Color.fromARGB(10, 0, 0, 0),
+            FutureBuilder(
+              future: _items,
+              builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
+                List<String>? listElements;
+                // Displays while the system is waiting for a response from the database
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  listElements = ["","","","",""];
+                } else if (snapshot.hasData) {
+                  listElements = snapshot.data;
+                } else {
+                  return Text("Failed to load books");
+                }
+                return _horizontalRow(
+                  prefix: "Acclaimed Title",
+                  count: 10,
+                  height: 180,
+                  width: 120,
+                  // color: const Color.fromARGB(255, 143, 239, 111),
+                  color: const Color.fromARGB(10, 0, 0, 0),
+                  bookFileNames: listElements
+                );
+              },
             ),
             const SizedBox(height: 75),
           ],

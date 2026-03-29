@@ -47,7 +47,7 @@ class BasketState extends State<Basket> {
   void getBookFileNames() async {
     // DB db = await DB.getReference();
     FirebaseDB db = FirebaseDB.getReference();
-    BasketContentManager.items = await db.getBasketContents(await AuthService.getEmail() as String);
+    BasketContentManager.items = db.getBasketContents(await AuthService.getEmail() as String);
     // setState(() {});
   }
 
@@ -194,12 +194,24 @@ class BasketState extends State<Basket> {
     // const cardColor = Color.fromARGB(255, 138, 101, 236);
     const cardColor = Color.fromARGB(10, 0, 0, 0);
 
-    return Column(
-      children: [
-        _basketHero(BasketContentManager.items.length),
-        Expanded(
-          child: BasketContentManager.items.isEmpty
-              ? Center(
+    return FutureBuilder(
+      future: BasketContentManager.items,
+      builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
+        List<String>? items = [];
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          items = [];
+        } else if (snapshot.hasData) {
+          items = snapshot.data;
+        }
+
+
+        return Column(
+          children: [
+            _basketHero(items == null ? 0 : items.length),
+            Expanded(
+              child: items == null ? Text("Failed to load basket") : items.isEmpty
+                ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -223,8 +235,8 @@ class BasketState extends State<Basket> {
                       ),
                     ],
                   ),
-                )
-              : GridView.builder(
+                ) :
+                GridView.builder(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 3,
@@ -232,88 +244,94 @@ class BasketState extends State<Basket> {
                     mainAxisSpacing: 10,
                     childAspectRatio: 0.6666,
                   ),
-                  itemCount: BasketContentManager.items.length,
+                  itemCount: items.length,
                   itemBuilder: (context, index) {
-                    final title = BasketContentManager.items[index];
+                    final title = items == null ? "" : items[index];
                     final heroTag = "basket-$index";
 
-          // List<int> bytes = targetFile.readAsBytes();
+                  // List<int> bytes = targetFile.readAsBytes();
 
 
-          // Opens a book and reads all of its content into memory
-//           EpubBook epubBook = await EpubReader.readBook(bytes);
+                  // Opens a book and reads all of its content into memory
+                  // EpubBook epubBook = await EpubReader.readBook(bytes);
 
-                    return GestureDetector(
-                      onLongPressStart: (details) {
-                        showMenu(
-                          context: context,
-                          position: RelativeRect.fromLTRB(
-                            details.globalPosition.dx,
-                            details.globalPosition.dy,
-                            details.globalPosition.dx,
-                            details.globalPosition.dy,
-                          ),
-                          items: [
-                            PopupMenuItem(
-                              value: "return",
-                              child: Text("Return ${title.substring(0, title.length - 5)}"),
-                            )
-                          ],
-                        ).then((value) async {
-                          if (value == "return") {
-                            // DB db = await DB.getReference();
-                            FirebaseDB db = FirebaseDB.getReference();
-                            await db.checkInBook(await AuthService.getEmail() as String, title);
-                            await context.read<BasketContentManager>().reload();
-                            setState(() {});
-                          }
-                        });
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14),
-                          color: Theme.of(context).colorScheme.surface,
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
-                          ),
+                  return GestureDetector(
+                    onLongPressStart: (details) {
+                      showMenu(
+                        context: context,
+                        position: RelativeRect.fromLTRB(
+                          details.globalPosition.dx,
+                          details.globalPosition.dy,
+                          details.globalPosition.dx,
+                          details.globalPosition.dy,
                         ),
-                        padding: const EdgeInsets.all(4),
-                        child: BookCard(
-                          title: title,
-                          color: cardColor,
-                          heroTag: heroTag,
-                          onTap: () {
-                            _saveReadingLocation(title);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    EpubLoaderPage(
-                                      epubAssetPath: "assets/books/${BasketContentManager
-                                          .items[index]}",
-                                    ),
-                              ),
-                            );
-                          }
+                        items: [
+                          PopupMenuItem(
+                            value: "return",
+                            child: Text("Return ${title.substring(0, title.length - 5)}"),
+                          )
+                        ],
+                      ).then((value) async {
+                        if (value == "return") {
+                          // DB db = await DB.getReference();
+                          FirebaseDB db = FirebaseDB.getReference();
+                          await db.checkInBook(await AuthService.getEmail() as String, title);
+                          await context.read<BasketContentManager>().reload();
+                          setState(() {});
+                        }
+                      });
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        color: Theme.of(context).colorScheme.surface,
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
                         ),
                       ),
-                    );
-                  },
-                ),
-        ),
-      ],
+                      padding: const EdgeInsets.all(4),
+                      child: BookCard(
+                        title: title,
+                        color: cardColor,
+                        heroTag: heroTag,
+                        onTap: () {
+                          _saveReadingLocation(title);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  EpubLoaderPage(
+                                    epubAssetPath:
+                                      items == null ?
+                                        "" :
+                                        "assets/books/${items[index]}",
+                                  ),
+                            ),
+                          );
+                        }
+                      ),
+                    ),
+                  );
+                }
+                )
+
+            )
+          ]
+        );
+      }
     );
   }
 }
 
 /// This class can be triggered as a ChangeNotifier to refresh the displayed content in the basket when it has been changed
 class BasketContentManager extends ChangeNotifier {
-  static List<String> items = [];
+  static late Future<List<String>> items;
 
   Future<void> reload() async {
     // DB db = await DB.getReference();
     FirebaseDB db = FirebaseDB.getReference();
-    items = await db.getBasketContents(await AuthService.getEmail() as String);
+    items = db.getBasketContents(await AuthService.getEmail() as String);
+
     notifyListeners();
   }
 }
