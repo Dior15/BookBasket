@@ -192,7 +192,8 @@ class CatalogState extends State<Catalog> with CoverLoader{
                   color: color,
                   heroTag: heroTag,
                   onTap: () => _openDetails(title, color, heroTag),
-                  cover: cover,
+                  // coverPath: cover,
+                  coverPath: bookFileNames == null ? "" : bookFileNames[index].length < 5 ? "" : "assets/book_covers/${bookFileNames[index].substring(0, bookFileNames[index].length - 5)}.jpg"
                 ),
               ),
           );

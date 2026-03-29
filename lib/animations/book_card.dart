@@ -10,7 +10,7 @@ class BookCard extends StatefulWidget {
   final Color color;
   final VoidCallback? onTap;
   final String heroTag; // for Hero transition
-  final cover;
+  final String coverPath;
 
   BookCard({
     super.key,
@@ -18,7 +18,7 @@ class BookCard extends StatefulWidget {
     required this.color,
     required this.heroTag,
     this.onTap,
-    this.cover,
+    required this.coverPath,
   });
 
   @override
@@ -80,6 +80,7 @@ class _BookCardState extends State<BookCard> with CoverLoader{
               Center(
                 child: Padding(
                   padding: const EdgeInsets.all(5),
+                  child: widget.coverPath == "" ? CircularProgressIndicator() : Image.asset(widget.coverPath)
                   // child: Text(
                   //   widget.title,
                   //   textAlign: TextAlign.center,
@@ -88,40 +89,40 @@ class _BookCardState extends State<BookCard> with CoverLoader{
                   //     color: Colors.white,
                   //   ),
                   // ),
-                  child: FutureBuilder<Uint8List?>(
-                    future: loadEpubCover(widget.title), // widget.title = filename
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const SizedBox(
-                          child: Center(
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2
-                            ),
-                          ),
-                        );
-                      }
-                      final cover = snapshot.data;
-                      if (cover == null) {
-                        return const SizedBox(
-                          width: 80,
-                          height: 120,
-                          child: Center(
-                            child: Text(
-                              "No cover",
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                        );
-                      }
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.memory(
-                          cover,
-                          fit: BoxFit.cover,
-                        ),
-                      );
-                    },
-                  ),
+                  // child: FutureBuilder<Uint8List?>(
+                  //   future: loadEpubCover(widget.title), // widget.title = filename
+                  //   builder: (context, snapshot) {
+                  //     if (!snapshot.hasData) {
+                  //       return const SizedBox(
+                  //         child: Center(
+                  //           child: CircularProgressIndicator(
+                  //               strokeWidth: 2
+                  //           ),
+                  //         ),
+                  //       );
+                  //     }
+                  //     final cover = snapshot.data;
+                  //     if (cover == null) {
+                  //       return const SizedBox(
+                  //         width: 80,
+                  //         height: 120,
+                  //         child: Center(
+                  //           child: Text(
+                  //             "No cover",
+                  //             style: TextStyle(color: Colors.white),
+                  //           ),
+                  //         ),
+                  //       );
+                  //     }
+                  //     return ClipRRect(
+                  //       borderRadius: BorderRadius.circular(8),
+                  //       // child: Image.memory(
+                  //       //   cover,
+                  //       //   fit: BoxFit.cover,
+                  //       // ),
+                  //     );
+                  //   },
+                  // ),
                 ),
               ),
             ],

@@ -216,7 +216,8 @@ class _BookDetailsPageState extends State<BookDetailsPage> with CoverLoader {
                             }
                             return ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: Image.memory(cover, fit: BoxFit.cover),
+                              // child: Image.memory(cover, fit: BoxFit.cover),
+                              child: Image.asset("assets/book_covers/${widget.title.substring(0, widget.title.length - 5)}.jpg")
                             );
                           },
                         ),

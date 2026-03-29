@@ -308,7 +308,8 @@ class BasketState extends State<Basket> {
                                   ),
                             ),
                           );
-                        }
+                        },
+                        coverPath: items == null ? ""  : items[index].length < 5 ? "" : "assets/book_covers/${items[index].substring(0, items[index].length - 5)}.jpg",
                       ),
                     ),
                   );

@@ -86,6 +86,7 @@ flutter:
   assets:
     - assets/
     - assets/books/
+    - assets/book_covers/
 
   fonts:
 
