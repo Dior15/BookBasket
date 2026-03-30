@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'animations/app_page_route.dart';
 import 'animations/book_details_page.dart';
-import 'database/db.dart';
+import 'firebase_database/firebase_db.dart';
 
 // ── Enums for filter & sort ──────────────────────────────────────────────────
 enum AvailabilityFilter { all, available, borrowed }
@@ -76,8 +76,8 @@ class _SearchState extends State<Search> {
   }
 
   Future<void> _runSearch(String q) async {
-    final db = await DB.getReference();
-    final matches = await db.getBookByTitle(q);
+    final db = FirebaseDB.getReference();
+    final matches = await db.getBooksByTitle(q);
 
     if (!mounted) return;
     if (_query != q) return;
@@ -94,11 +94,12 @@ class _SearchState extends State<Search> {
     List<Map<String, Object?>> source,
   ) {
     // 1. Filter
+    // isBorrowed is a bool from Firestore (true = borrowed, false = available)
     Iterable<Map<String, Object?>> filtered = source;
     if (_filter == AvailabilityFilter.available) {
-      filtered = source.where((b) => b['isBorrowed'] == 0);
+      filtered = source.where((b) => b['isBorrowed'] == false);
     } else if (_filter == AvailabilityFilter.borrowed) {
-      filtered = source.where((b) => b['isBorrowed'] != 0);
+      filtered = source.where((b) => b['isBorrowed'] == true);
     }
 
     // 2. Sort

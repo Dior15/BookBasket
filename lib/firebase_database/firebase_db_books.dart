@@ -58,4 +58,55 @@ extension Books on FirebaseDB {
       return document.data()["fileName"].toString();
     }).toList();
   }
+
+  /// Pass search bar text, receive full book detail maps for the search UI.
+  /// Each map contains: title, author, fileName, isBorrowed (bool).
+  /// Borrow status is read from the books collection's [isBorrowed] field,
+  /// which is kept in sync by the checkout/checkin transactions.
+  Future<List<Map<String, dynamic>>> getBooksByTitle(String title) async {
+    // Fetch matching books via prefix search on the lowercase title field.
+    final QuerySnapshot<Map<String, dynamic>> booksQuery =
+        await FirebaseDB._database
+            .collection("books")
+            .where("titleLower", isGreaterThanOrEqualTo: title.toLowerCase())
+            .where("titleLower", isLessThan: '${title.toLowerCase()}z')
+            .orderBy("titleLower")
+            .get();
+
+    if (booksQuery.docs.isEmpty) return [];
+
+    // Collect all matched fileNames so we can cross-check bookCheckout.
+    final List<String> fileNames = booksQuery.docs
+        .map((d) => d.data()["fileName"].toString())
+        .toList();
+
+    // Fetch active checkout records for these books in one query.
+    // Firestore "whereIn" supports up to 30 items; chunk if needed.
+    final Set<String> borrowedFileNames = {};
+    const int chunkSize = 30;
+    for (int i = 0; i < fileNames.length; i += chunkSize) {
+      final chunk = fileNames.sublist(
+          i, i + chunkSize > fileNames.length ? fileNames.length : i + chunkSize);
+      final QuerySnapshot checkoutQuery = await FirebaseDB._database
+          .collection("bookCheckout")
+          .where("fileName", whereIn: chunk)
+          .get();
+      for (final doc in checkoutQuery.docs) {
+        borrowedFileNames.add(doc["fileName"].toString());
+      }
+    }
+
+    // Build result list, using the checkout set as the authoritative source
+    // for borrow status (mirrors what the books.isBorrowed field should show).
+    return booksQuery.docs.map((doc) {
+      final data = doc.data();
+      final String fileName = data["fileName"]?.toString() ?? "";
+      return <String, dynamic>{
+        "title": data["title"] ?? "",
+        "author": data["author"] ?? "",
+        "fileName": fileName,
+        "isBorrowed": borrowedFileNames.contains(fileName),
+      };
+    }).toList();
+  }
 }
