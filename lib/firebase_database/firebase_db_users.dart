@@ -73,4 +73,16 @@ extension Users on FirebaseDB {
         .delete();
     }
   }
+
+  /// Checks if a user already exists in the database
+  Future<bool> doesUserExist(String email) async {
+    QuerySnapshot<Map<String, dynamic>> query = await FirebaseDB._database
+        .collection("users")
+        .where("username", isEqualTo: email)
+        .limit(1)
+        .get();
+
+    return query.docs.isNotEmpty;
+  }
+
 }

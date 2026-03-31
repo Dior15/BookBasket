@@ -1,6 +1,7 @@
 import 'package:bookbasket/firebase_database/firebase_db.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-// import 'database/db.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // NEW IMPORT
+import 'package:google_sign_in/google_sign_in.dart'; // NEW IMPORT
 
 class AuthService {
   static const _kLoggedIn = 'logged_in';
@@ -50,16 +51,6 @@ class AuthService {
       }
     }
 
-    // if (e == adminEmail && p == adminPassword) {
-    //   ok = true;
-    //   admin = true;
-    // } else if (e == userEmail && p == userPassword) {
-    //   ok = true;
-    //   admin = false;
-    // } else {
-    //   ok = false;
-    // }
-
     if (!ok) return false;
 
     final prefs = await SharedPreferences.getInstance();
@@ -69,10 +60,28 @@ class AuthService {
     return true;
   }
 
+  // NEW: Force a local login session for Google Auth
+  static Future<void> loginWithGoogle(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kLoggedIn, true);
+    await prefs.setString(_kEmail, email);
+
+    // We also need to query and save the admin status here so DrawerShell knows!
+    FirebaseDB db = FirebaseDB.getReference();
+    bool admin = await db.isAdmin(email);
+    await prefs.setBool(_kIsAdmin, admin);
+  }
+
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kLoggedIn);
-    await prefs.remove(_kEmail);
-    await prefs.remove(_kIsAdmin);
+    await prefs.clear();
+
+    // NEW: Explicitly clear the Google and Firebase sessions
+    try {
+      await FirebaseAuth.instance.signOut();
+      await GoogleSignIn().signOut();
+    } catch (e) {
+      // It's safe to silently fail here if they weren't logged in via Google
+    }
   }
 }

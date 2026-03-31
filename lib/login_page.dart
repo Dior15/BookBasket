@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import 'auth_service.dart';
 import 'animations/shake.dart';
 import 'navigation/drawer_shell.dart';
+import 'firebase_database/firebase_db.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -29,6 +32,7 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  // --- Standard Email/Password Login ---
   Future<void> _handleLogin() async {
     setState(() => _errorText = null);
 
@@ -62,12 +66,146 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  // --- Google Sign-In Logic (With Password Prompt) ---
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _errorText = null;
+      _loading = true;
+    });
+
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        setState(() => _loading = false);
+        return; // User canceled
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential =
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      // Clean the email to prevent case-sensitivity database misses
+      final String safeEmail = userCredential.user!.email!.toLowerCase().trim();
+
+      FirebaseDB db = FirebaseDB();
+      bool exists = await db.doesUserExist(safeEmail);
+
+      bool admin = false;
+
+      // If they are a brand new Google user, prompt for a password
+      if (!exists) {
+        if (!mounted) return;
+        String? newPassword = await _promptForPassword(safeEmail);
+
+        // If they close the dialog without entering a password, cancel the login
+        if (newPassword == null || newPassword.isEmpty) {
+          await FirebaseAuth.instance.signOut();
+          await GoogleSignIn().signOut();
+          setState(() {
+            _loading = false;
+            _errorText = 'Registration cancelled. A password is required.';
+            _shakeKey++;
+          });
+          return;
+        }
+
+        // Save the new user to Firestore with their newly created password
+        await db.addUser(safeEmail, newPassword, false);
+        admin = false;
+      } else {
+        admin = await db.isAdmin(safeEmail);
+      }
+
+      // Initialize the local session
+      await AuthService.loginWithGoogle(safeEmail);
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DrawerShell(isAdmin: admin),
+        ),
+      );
+
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        _errorText = 'Google Sign-In failed. Please try again.';
+        _shakeKey++;
+      });
+      debugPrint("Google Auth Error: $e");
+    }
+  }
+
+  // --- Password Prompt Dialog ---
+  Future<String?> _promptForPassword(String email) {
+    String enteredPassword = '';
+    bool obscure = true;
+
+    return showDialog<String?>(
+      context: context,
+      barrierDismissible: false, // Forces user to interact with the dialog
+      builder: (context) {
+        return StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                title: const Text('Complete Registration'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Welcome, $email!\n\nPlease secure your new BookBasket account with a password so you can log in normally in the future.',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      obscureText: obscure,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                          onPressed: () => setDialogState(() => obscure = !obscure),
+                        ),
+                      ),
+                      onChanged: (val) => enteredPassword = val,
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, null),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (enteredPassword.trim().isNotEmpty) {
+                        Navigator.pop(context, enteredPassword.trim());
+                      }
+                    },
+                    child: const Text('Save & Login'),
+                  ),
+                ],
+              );
+            }
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      // No AppBar to match your “Catalog” style (clean top space)
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -79,8 +217,8 @@ class _LoginPageState extends State<LoginPage> {
                 children: [
                   const SizedBox(height: 10),
 
-                  // Hero card (matches your screenshots vibe)
-                  _HeroCard(
+                  // Hero card
+                  const _HeroCard(
                     title: 'Welcome to BookBasket',
                     subtitle: 'Sign in to your digital bookshelf',
                     icon: Icons.menu_book_rounded,
@@ -135,8 +273,7 @@ class _LoginPageState extends State<LoginPage> {
                                     keyboardType: TextInputType.emailAddress,
                                     decoration: const InputDecoration(
                                       labelText: 'Email',
-                                      prefixIcon:
-                                      Icon(Icons.email_outlined),
+                                      prefixIcon: Icon(Icons.email_outlined),
                                     ),
                                     validator: (v) {
                                       final value = (v ?? '').trim();
@@ -155,8 +292,7 @@ class _LoginPageState extends State<LoginPage> {
                                     obscureText: _hidePassword,
                                     decoration: InputDecoration(
                                       labelText: 'Password',
-                                      prefixIcon:
-                                      const Icon(Icons.lock_outline),
+                                      prefixIcon: const Icon(Icons.lock_outline),
                                       suffixIcon: IconButton(
                                         onPressed: () => setState(
                                               () => _hidePassword = !_hidePassword,
@@ -164,8 +300,7 @@ class _LoginPageState extends State<LoginPage> {
                                         icon: Icon(
                                           _hidePassword
                                               ? Icons.visibility_outlined
-                                              : Icons
-                                              .visibility_off_outlined,
+                                              : Icons.visibility_off_outlined,
                                         ),
                                       ),
                                     ),
@@ -174,29 +309,43 @@ class _LoginPageState extends State<LoginPage> {
                                       if (value.isEmpty) {
                                         return 'Password is required';
                                       }
-                                      // if (value.length < 4) {
-                                      //   return 'Password is too short';
-                                      // }
                                       return null;
                                     },
                                   ),
                                   const SizedBox(height: 16),
 
+                                  // Standard Login Button
                                   SizedBox(
                                     width: double.infinity,
                                     child: ElevatedButton(
-                                      onPressed:
-                                      _loading ? null : _handleLogin,
+                                      onPressed: _loading ? null : _handleLogin,
                                       child: _loading
                                           ? const SizedBox(
                                         height: 18,
                                         width: 18,
-                                        child:
-                                        CircularProgressIndicator(
+                                        child: CircularProgressIndicator(
                                           strokeWidth: 2,
                                         ),
                                       )
                                           : const Text('Login'),
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 12),
+
+                                  // Google Sign-In Button
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton.icon(
+                                      onPressed: _loading ? null : _handleGoogleSignIn,
+                                      icon: Image.network(
+                                        'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png',
+                                        height: 20,
+                                      ),
+                                      label: const Text('Sign in with Google'),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                      ),
                                     ),
                                   ),
 
@@ -206,9 +355,7 @@ class _LoginPageState extends State<LoginPage> {
 
                                   Text(
                                     'Demo accounts',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium,
+                                    style: Theme.of(context).textTheme.titleMedium,
                                     textAlign: TextAlign.center,
                                   ),
                                   const SizedBox(height: 8),
@@ -231,7 +378,6 @@ class _LoginPageState extends State<LoginPage> {
 
                   const SizedBox(height: 14),
 
-                  // Optional: small “back to catalog” style hint / footer
                   Text(
                     'Tip: use the demo accounts above to explore the app.',
                     textAlign: TextAlign.center,
