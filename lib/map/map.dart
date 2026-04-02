@@ -1,11 +1,12 @@
-import 'dart:async'; // NEW: Required for the Timer
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'reading_marker.dart';
+import '../auth_service.dart';
+import '../firebase_database/firebase_db.dart';
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -20,45 +21,41 @@ class _MapPageState extends State<MapPage> {
 
   final MapController _mapController = MapController();
 
-  // NEW: Timer and tracking variables for live-updating
-  Timer? _pollingTimer;
-  String _lastDataHash = "";
+  // NEW: A subscription to keep our stream open
+  StreamSubscription<List<ReadingMarker>>? _markerSubscription;
 
   @override
   void initState() {
     super.initState();
-    _loadMarkers();
     _getCurrentLocation();
-
-    // NEW: Check for new background markers every 2 seconds
-    _pollingTimer = Timer.periodic(const Duration(seconds: 2), (_) {
-      _loadMarkers();
-    });
+    _listenToMarkers(); // NEW: Start the stream
   }
 
   @override
   void dispose() {
-    // NEW: Always cancel timers when leaving the page to prevent memory leaks!
-    _pollingTimer?.cancel();
+    // NEW: Always close the valve when you leave the page!
+    _markerSubscription?.cancel();
     _mapController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadMarkers() async {
-    final prefs = await SharedPreferences.getInstance();
-    final markerStrings = prefs.getStringList('reading_markers') ?? [];
+  // --- NEW: The Live Stream Listener ---
+  Future<void> _listenToMarkers() async {
+    try {
+      final email = await AuthService.getEmail() ?? AuthService.userEmail;
+      final db = FirebaseDB.getReference();
 
-    // NEW: Create a simple string out of the saved data to see if it changed
-    final currentHash = markerStrings.join();
-
-    // NEW: Only trigger a UI rebuild if a background task actually added a new marker
-    if (currentHash != _lastDataHash && mounted) {
-      setState(() {
-        _lastDataHash = currentHash;
-        _markers = markerStrings
-            .map((m) => ReadingMarker.fromJson(m))
-            .toList();
+      // We subscribe to the stream. Every time the cloud data changes,
+      // this block of code will automatically run and update the UI.
+      _markerSubscription = db.getUserMarkersStream(email).listen((cloudMarkers) {
+        if (mounted) {
+          setState(() {
+            _markers = cloudMarkers;
+          });
+        }
       });
+    } catch (e) {
+      debugPrint("Error listening to marker stream: $e");
     }
   }
 
@@ -84,17 +81,23 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
+  // --- UPDATED: Delete marker ---
   Future<void> _deleteMarker(int index) async {
-    setState(() {
-      _markers.removeAt(index);
-    });
+    final markerToDelete = _markers[index];
 
-    final prefs = await SharedPreferences.getInstance();
-    final updatedMarkerStrings = _markers.map((m) => m.toJson()).toList();
-    await prefs.setStringList('reading_markers', updatedMarkerStrings);
+    try {
+      final email = await AuthService.getEmail() ?? AuthService.userEmail;
+      final db = FirebaseDB.getReference();
 
-    // Update the hash so the polling timer doesn't instantly undo our delete
-    _lastDataHash = updatedMarkerStrings.join();
+      // All we have to do is tell Firebase to delete it.
+      await db.deleteUserMarker(email, markerToDelete);
+
+      // NOTE: We don't even need to call setState to remove it from the list!
+      // Because we are using a Stream, Firebase will instantly notice the deletion
+      // and push the new, updated list back down our _markerSubscription pipe!
+    } catch (e) {
+      debugPrint("Error deleting cloud marker: $e");
+    }
   }
 
   @override
@@ -109,10 +112,15 @@ class _MapPageState extends State<MapPage> {
 
     return Scaffold(
       appBar: AppBar(
+        title: const Text(
+          "Reading Map",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
       extendBodyBehindAppBar: true,
+
       endDrawer: Drawer(
         child: SafeArea(
           child: Column(
@@ -127,7 +135,7 @@ class _MapPageState extends State<MapPage> {
               const Divider(),
               Expanded(
                 child: _markers.isEmpty
-                    ? const Center(child: Text("No markers yet. Read some books!"))
+                    ? const Center(child: Text("No markers yet."))
                     : ListView.builder(
                   itemCount: _markers.length,
                   itemBuilder: (context, index) {

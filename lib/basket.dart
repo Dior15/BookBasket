@@ -23,32 +23,15 @@ class Basket extends StatefulWidget {
 }
 
 class BasketState extends State<Basket> {
-  // late List<String> _items = [];
-  // [
-  //   "The Gunslinger.epub",
-  //   "It Ends With Us.epub",
-  //   "Camp X.epub",
-  //   "Fantastic 4 Rise of the Silver Surfer.epub",
-  //   "My Baby Mama Is A Loser.epub",
-  //   "Cruel Mate.epub",
-  //   "Twelve Angry Men.epub",
-  //   "An Omega For Dylan.epub",
-  //   "Under The Dome.epub",
-  //   "Sisters.epub",
-  // ];
-
   @override
   void initState() {
     super.initState();
     getBookFileNames();
   }
 
-  // This needs to be called outside of initState because initState cannot be an async method itself
   void getBookFileNames() async {
-    // DB db = await DB.getReference();
     FirebaseDB db = FirebaseDB.getReference();
     BasketContentManager.items = db.getBasketContents(await AuthService.getEmail() as String);
-    // setState(() {});
   }
 
   void _openDetails(String title, Color color, String heroTag) {
@@ -121,6 +104,7 @@ class BasketState extends State<Basket> {
     );
   }
 
+  // --- UPDATED: Save directly to Firebase Database ---
   Future<void> _saveReadingLocation(String bookTitle) async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -139,36 +123,42 @@ class BasketState extends State<Basket> {
         timeLimit: const Duration(seconds: 5),
       );
 
-      final prefs = await SharedPreferences.getInstance();
-      final markerStrings = prefs.getStringList('reading_markers')?.toList() ?? [];
+      final email = await AuthService.getEmail() ?? AuthService.userEmail;
+      final db = FirebaseDB.getReference();
 
-      // Convert saved strings back into Marker objects
-      List<ReadingMarker> existingMarkers = markerStrings.map((m) => ReadingMarker.fromJson(m)).toList();
+      // 1. Fetch existing cloud markers for this user
+      List<ReadingMarker> existingMarkers = await db.getUserMarkers(email);
 
       bool locationFound = false;
 
-      // Check if we are within ~1km of an existing marker
+      // 2. Check if we are within ~1km of an existing cloud marker
       for (int i = 0; i < existingMarkers.length; i++) {
         final marker = existingMarkers[i];
 
         if ((marker.latitude - position.latitude).abs() < 0.01 &&
             (marker.longitude - position.longitude).abs() < 0.01) {
 
-          locationFound = true; // We found a nearby marker!
+          locationFound = true;
 
-          // Check if this book is already in this marker's list
+          // 3. Check if this book is already in this marker's list
           if (!marker.bookTitles.contains(bookTitle)) {
-            marker.bookTitles.add(bookTitle); // Add the new book
-            existingMarkers[i] = marker; // Update the list
-            debugPrint("SUCCESS: Added '$bookTitle' to existing marker at ${marker.latitude}, ${marker.longitude}");
+
+            // Delete the old marker from the cloud
+            await db.deleteUserMarker(email, marker);
+
+            // Update the data locally, then upload the updated version as a new marker
+            marker.bookTitles.add(bookTitle);
+            await db.addUserMarker(email, marker);
+
+            debugPrint("SUCCESS: Added '$bookTitle' to existing cloud marker at ${marker.latitude}, ${marker.longitude}");
           } else {
-            debugPrint("IGNORED: '$bookTitle' is already recorded at this location.");
+            debugPrint("IGNORED: '$bookTitle' is already recorded at this cloud location.");
           }
-          break; // Stop checking other markers
+          break;
         }
       }
 
-      // If no marker was within 1km, create a brand new one
+      // 4. If no marker was within 1km, create a brand new one in the cloud
       if (!locationFound) {
         final newMarker = ReadingMarker(
           bookTitles: [bookTitle],
@@ -176,13 +166,10 @@ class BasketState extends State<Basket> {
           longitude: position.longitude,
           timestamp: DateTime.now(),
         );
-        existingMarkers.add(newMarker);
-        debugPrint("SUCCESS: Created NEW marker for '$bookTitle' at ${position.latitude}, ${position.longitude}");
-      }
 
-      // Save the updated list back to SharedPreferences
-      final updatedMarkerStrings = existingMarkers.map((m) => m.toJson()).toList();
-      await prefs.setStringList('reading_markers', updatedMarkerStrings);
+        await db.addUserMarker(email, newMarker);
+        debugPrint("SUCCESS: Created NEW cloud marker for '$bookTitle' at ${position.latitude}, ${position.longitude}");
+      }
 
     } catch (e) {
       debugPrint('Location save failed: $e');
@@ -191,135 +178,128 @@ class BasketState extends State<Basket> {
 
   @override
   Widget build(BuildContext context) {
-    // const cardColor = Color.fromARGB(255, 138, 101, 236);
     const cardColor = Color.fromARGB(10, 0, 0, 0);
 
     return FutureBuilder(
-      future: BasketContentManager.items,
-      builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
-        List<String>? items = [];
+        future: BasketContentManager.items,
+        builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
+          List<String>? items = [];
 
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          items = [];
-        } else if (snapshot.hasData) {
-          items = snapshot.data;
-        }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            items = [];
+          } else if (snapshot.hasData) {
+            items = snapshot.data;
+          }
 
-
-        return Column(
-          children: [
-            _basketHero(items == null ? 0 : items.length),
-            Expanded(
-              child: items == null ? Text("Failed to load basket") : items.isEmpty
-                ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: const Color(0xFF3949AB).withOpacity(0.10),
-                        ),
-                        child: const Icon(
-                          Icons.shopping_basket_outlined,
-                          color: Color(0xFF3949AB),
-                          size: 34,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      const Text(
-                        'Your basket is empty',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                      ),
-                    ],
-                  ),
-                ) :
-                GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 0.6666,
-                  ),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final title = items == null ? "" : items[index];
-                    final heroTag = "basket-$index";
-
-                  // List<int> bytes = targetFile.readAsBytes();
-
-
-                  // Opens a book and reads all of its content into memory
-                  // EpubBook epubBook = await EpubReader.readBook(bytes);
-
-                  return GestureDetector(
-                    onLongPressStart: (details) {
-                      showMenu(
-                        context: context,
-                        position: RelativeRect.fromLTRB(
-                          details.globalPosition.dx,
-                          details.globalPosition.dy,
-                          details.globalPosition.dx,
-                          details.globalPosition.dy,
-                        ),
-                        items: [
-                          PopupMenuItem(
-                            value: "return",
-                            child: Text("Return ${title.substring(0, title.length - 5)}"),
-                          )
+          return Column(
+              children: [
+                _basketHero(items == null ? 0 : items.length),
+                Expanded(
+                    child: items == null ? const Text("Failed to load basket") : items.isEmpty
+                        ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 72,
+                            height: 72,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF3949AB).withOpacity(0.10),
+                            ),
+                            child: const Icon(
+                              Icons.shopping_basket_outlined,
+                              color: Color(0xFF3949AB),
+                              size: 34,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          const Text(
+                            'Your basket is empty',
+                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                          ),
                         ],
-                      ).then((value) async {
-                        if (value == "return") {
-                          // DB db = await DB.getReference();
-                          FirebaseDB db = FirebaseDB.getReference();
-                          await db.checkInBook(await AuthService.getEmail() as String, title);
-                          await context.read<BasketContentManager>().reload();
-                          setState(() {});
-                        }
-                      });
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        color: Theme.of(context).colorScheme.surface,
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
-                        ),
                       ),
-                      padding: const EdgeInsets.all(4),
-                      child: BookCard(
-                        title: title,
-                        color: cardColor,
-                        heroTag: heroTag,
-                        onTap: () {
-                          _saveReadingLocation(title);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  EpubLoaderPage(
-                                    epubAssetPath:
-                                      items == null ?
-                                        "" :
-                                        "assets/books/${items[index]}",
-                                  ),
+                    ) :
+                    GridView.builder(
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                          childAspectRatio: 0.6666,
+                        ),
+                        itemCount: items.length,
+                        itemBuilder: (context, index) {
+                          final title = items == null ? "" : items[index];
+                          final heroTag = "basket-$index";
+
+                          return GestureDetector(
+                            onLongPressStart: (details) {
+                              showMenu(
+                                context: context,
+                                position: RelativeRect.fromLTRB(
+                                  details.globalPosition.dx,
+                                  details.globalPosition.dy,
+                                  details.globalPosition.dx,
+                                  details.globalPosition.dy,
+                                ),
+                                items: [
+                                  PopupMenuItem(
+                                    value: "return",
+                                    child: Text("Return ${title.substring(0, title.length - 5)}"),
+                                  )
+                                ],
+                              ).then((value) async {
+                                if (value == "return") {
+                                  FirebaseDB db = FirebaseDB.getReference();
+                                  await db.checkInBook(await AuthService.getEmail() as String, title);
+                                  await context.read<BasketContentManager>().reload();
+                                  setState(() {});
+                                }
+                              });
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                color: Theme.of(context).colorScheme.surface,
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+                                ),
+                              ),
+                              padding: const EdgeInsets.all(4),
+                              child: BookCard(
+                                title: title,
+                                color: cardColor,
+                                heroTag: heroTag,
+                                onTap: () {
+                                  // The newly updated cloud marker call!
+                                  _saveReadingLocation(title);
+
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          EpubLoaderPage(
+                                            epubAssetPath:
+                                            items == null ?
+                                            "" :
+                                            "assets/books/${items[index]}",
+                                          ),
+                                    ),
+                                  );
+                                },
+                                coverPath: items == null ? ""  : items[index].length < 5 ? "" : "assets/book_covers/${items[index].substring(0, items[index].length - 5)}.jpg",
+                              ),
                             ),
                           );
-                        },
-                        coverPath: items == null ? ""  : items[index].length < 5 ? "" : "assets/book_covers/${items[index].substring(0, items[index].length - 5)}.jpg",
-                      ),
-                    ),
-                  );
-                }
-                )
+                        }
+                    )
 
-            )
-          ]
-        );
-      }
+                )
+              ]
+          );
+        }
     );
   }
 }
@@ -329,7 +309,6 @@ class BasketContentManager extends ChangeNotifier {
   static late Future<List<String>> items;
 
   Future<void> reload() async {
-    // DB db = await DB.getReference();
     FirebaseDB db = FirebaseDB.getReference();
     items = db.getBasketContents(await AuthService.getEmail() as String);
 

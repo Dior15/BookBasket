@@ -1,11 +1,13 @@
 library;
 
 import "package:cloud_firestore/cloud_firestore.dart";
+import '../map/reading_marker.dart';
 
 part "firebase_db_users.dart";
 part "firebase_db_books.dart";
 part "firebase_db_checkout.dart";
 part "firebase_db_ratings.dart";
+part "firebase_db_markers.dart";
 
 class FirebaseDB {
   static final FirebaseDB _db = FirebaseDB();
