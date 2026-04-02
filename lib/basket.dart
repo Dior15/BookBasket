@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import 'animations/app_page_route.dart';
 import 'animations/staggered_in.dart';
@@ -29,6 +30,7 @@ class BasketState extends State<Basket> {
     getBookFileNames();
   }
 
+  // This needs to be called outside of initState because initState cannot be an async method itself
   void getBookFileNames() async {
     FirebaseDB db = FirebaseDB.getReference();
     BasketContentManager.items = db.getBasketContents(await AuthService.getEmail() as String);
@@ -104,7 +106,7 @@ class BasketState extends State<Basket> {
     );
   }
 
-  // --- UPDATED: Save directly to Firebase Database ---
+  // --- MERGED: Uses FirebaseDB instead of SharedPreferences for Map Markers ---
   Future<void> _saveReadingLocation(String bookTitle) async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -182,8 +184,8 @@ class BasketState extends State<Basket> {
 
     return FutureBuilder(
         future: BasketContentManager.items,
-        builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
-          List<String>? items = [];
+        builder: (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
+          List<Map<String, dynamic>>? items = [];
 
           if (snapshot.connectionState == ConnectionState.waiting) {
             items = [];
@@ -221,17 +223,14 @@ class BasketState extends State<Basket> {
                         ],
                       ),
                     ) :
-                    GridView.builder(
+                    MasonryGridView.count(
                         padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                          childAspectRatio: 0.6666,
-                        ),
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 10,
+                        crossAxisSpacing: 10,
                         itemCount: items.length,
                         itemBuilder: (context, index) {
-                          final title = items == null ? "" : items[index];
+                          final title = items == null ? "" : items[index]["fileName"];
                           final heroTag = "basket-$index";
 
                           return GestureDetector(
@@ -262,34 +261,39 @@ class BasketState extends State<Basket> {
                             child: Container(
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(14),
-                                color: Theme.of(context).colorScheme.surface,
+                                color: Colors.black.withOpacity(0.18),
                                 border: Border.all(
                                   color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
                                 ),
                               ),
                               padding: const EdgeInsets.all(4),
-                              child: BookCard(
-                                title: title,
-                                color: cardColor,
-                                heroTag: heroTag,
-                                onTap: () {
-                                  // The newly updated cloud marker call!
-                                  _saveReadingLocation(title);
-
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          EpubLoaderPage(
-                                            epubAssetPath:
-                                            items == null ?
-                                            "" :
-                                            "assets/books/${items[index]}",
-                                          ),
-                                    ),
-                                  );
-                                },
-                                coverPath: items == null ? ""  : items[index].length < 5 ? "" : "assets/book_covers/${items[index].substring(0, items[index].length - 5)}.jpg",
+                              child: Column(
+                                children: [
+                                  BookCard(
+                                    title: title as String,
+                                    color: cardColor,
+                                    heroTag: heroTag,
+                                    onTap: () {
+                                      _saveReadingLocation(title);
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              EpubLoaderPage(
+                                                epubAssetPath:
+                                                items == null ?
+                                                "" :
+                                                "assets/books/${items[index]["fileName"]}",
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                    coverPath: items == null ? ""  : items[index]["fileName"]!.length < 5 ? "" : "assets/book_covers/${items[index]["fileName"]?.substring(0, items[index]["fileName"]!.length - 5)}.jpg",
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text("Expires on: ${items?[index]["checkoutExpiry"]}"),
+                                  const SizedBox(height: 3),
+                                ],
                               ),
                             ),
                           );
@@ -306,7 +310,7 @@ class BasketState extends State<Basket> {
 
 /// This class can be triggered as a ChangeNotifier to refresh the displayed content in the basket when it has been changed
 class BasketContentManager extends ChangeNotifier {
-  static late Future<List<String>> items;
+  static late Future<List<Map<String, dynamic>>> items;
 
   Future<void> reload() async {
     FirebaseDB db = FirebaseDB.getReference();
