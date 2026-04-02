@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import 'auth_service.dart';
+import 'sign_up.dart';
 import 'animations/shake.dart';
 import 'navigation/drawer_shell.dart';
 import 'firebase_database/firebase_db.dart';
@@ -132,7 +133,6 @@ class _LoginPageState extends State<LoginPage> {
           builder: (_) => DrawerShell(isAdmin: admin),
         ),
       );
-
     } catch (e) {
       setState(() {
         _loading = false;
@@ -153,49 +153,54 @@ class _LoginPageState extends State<LoginPage> {
       barrierDismissible: false, // Forces user to interact with the dialog
       builder: (context) {
         return StatefulBuilder(
-            builder: (context, setDialogState) {
-              return AlertDialog(
-                title: const Text('Complete Registration'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Welcome, $email!\n\nPlease secure your new BookBasket account with a password so you can log in normally in the future.',
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      obscureText: obscure,
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined),
-                          onPressed: () => setDialogState(() => obscure = !obscure),
-                        ),
-                      ),
-                      onChanged: (val) => enteredPassword = val,
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, null),
-                    child: const Text('Cancel'),
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Complete Registration'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Welcome, $email!\n\nPlease secure your new BookBasket account with a password so you can log in normally in the future.',
+                    style: const TextStyle(fontSize: 14),
                   ),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (enteredPassword.trim().isNotEmpty) {
-                        Navigator.pop(context, enteredPassword.trim());
-                      }
-                    },
-                    child: const Text('Save & Login'),
+                  const SizedBox(height: 16),
+                  TextField(
+                    obscureText: obscure,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscure
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                        onPressed: () =>
+                            setDialogState(() => obscure = !obscure),
+                      ),
+                    ),
+                    onChanged: (val) => enteredPassword = val,
                   ),
                 ],
-              );
-            }
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, null),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (enteredPassword.trim().isNotEmpty) {
+                      Navigator.pop(context, enteredPassword.trim());
+                    }
+                  },
+                  child: const Text('Save & Login'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -337,15 +342,38 @@ class _LoginPageState extends State<LoginPage> {
                                   SizedBox(
                                     width: double.infinity,
                                     child: OutlinedButton.icon(
-                                      onPressed: _loading ? null : _handleGoogleSignIn,
+                                      onPressed:
+                                      _loading ? null : _handleGoogleSignIn,
                                       icon: Image.network(
                                         'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png',
                                         height: 20,
                                       ),
                                       label: const Text('Sign in with Google'),
                                       style: OutlinedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
                                       ),
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 8),
+
+                                  // Sign Up Button
+                                  TextButton(
+                                    onPressed: _loading
+                                        ? null
+                                        : () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                          const SignUpPage(),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text(
+                                      "Don't have an account? Sign up",
                                     ),
                                   ),
 

@@ -17,14 +17,36 @@ extension BookCheckout on FirebaseDB {
       // Check availability within transaction
       final bookSnapshot = await transaction.get(query.docs.first.reference);
       final bool isBorrowed = bookSnapshot["isBorrowed"];
-      if (isBorrowed) return(null);
+
+      if (isBorrowed) {
+        final checkoutRecordSnapshot = await FirebaseDB._database
+          .collection("bookCheckout")
+          .where("fileName", isEqualTo: fileName)
+          .limit(1)
+          .get();
+        final checkoutRecordSnapshotT = await transaction.get(checkoutRecordSnapshot.docs.first.reference);
+
+        // Check if the current date is after the current checkout's expiration
+        if (DateTime.now().isAfter(checkoutRecordSnapshotT["checkoutExpiry"].toDate())) {
+          transaction.delete(checkoutRecordSnapshotT.reference);
+        } else {
+          return(null);
+        }
+      }
 
       // Update isBorrowed field for book
       transaction.update(bookSnapshot.reference, {"isBorrowed": true});
 
       // Create checkout record
       final checkoutDocument = FirebaseDB._database.collection("bookCheckout").doc();
-      transaction.set(checkoutDocument, {"fileName": fileName, "username": username});
+      transaction.set(
+        checkoutDocument,
+        {
+          "fileName": fileName,
+          "username": username,
+          "checkoutExpiry": Timestamp.fromDate(DateTime.now().add(Duration(days: 14)))
+        }
+      );
 
       // Return checkout document id
       return(checkoutDocument.id);
@@ -57,14 +79,17 @@ extension BookCheckout on FirebaseDB {
   }
 
   /// Pass the current username, receive their basket contents
-  Future<List<String>> getBasketContents(String username) async {
+  Future<List<Map<String, dynamic>>> getBasketContents(String username) async {
     QuerySnapshot query = await FirebaseDB._database
         .collection("bookCheckout")
         .where("username", isEqualTo: username)
         .get();
 
     return query.docs.map((document) {
-      return document["fileName"].toString();
+      return {
+        "fileName": document["fileName"].toString(),
+        "checkoutExpiry": document["checkoutExpiry"].toDate().toString().substring(0, 10)
+      };
     }).toList();
   }
 }
