@@ -8,6 +8,7 @@ part "firebase_db_books.dart";
 part "firebase_db_checkout.dart";
 part "firebase_db_ratings.dart";
 part "firebase_db_markers.dart";
+part "firebase_db_friends.dart";
 
 class FirebaseDB {
   static final FirebaseDB _db = FirebaseDB();

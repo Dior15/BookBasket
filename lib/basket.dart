@@ -310,7 +310,7 @@ class BasketState extends State<Basket> {
 
 /// This class can be triggered as a ChangeNotifier to refresh the displayed content in the basket when it has been changed
 class BasketContentManager extends ChangeNotifier {
-  static late Future<List<Map<String, dynamic>>> items;
+  static Future<List<Map<String, dynamic>>> items = Future.value([]);
 
   Future<void> reload() async {
     FirebaseDB db = FirebaseDB.getReference();

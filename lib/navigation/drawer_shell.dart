@@ -58,7 +58,7 @@ class _DrawerShellState extends State<DrawerShell> {
       DrawerDestination(
         title: 'Friends',
         icon: Icons.groups_rounded,
-        builder: (_) => const FriendsListPage(),
+        builder: (_) => FriendsListPage(),
       ),
       DrawerDestination(
         title: 'Preferences',

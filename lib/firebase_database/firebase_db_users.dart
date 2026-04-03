@@ -56,6 +56,18 @@ extension Users on FirebaseDB {
     await FirebaseDB._database
         .collection("users")
         .add({"username": username, "password": password, "isAdmin": isAdmin});
+
+    // Insert to friend table with default information
+    await FirebaseDB._database
+      .collection("friends")
+      .add(
+      {
+        "username": username,
+        "lastReadBook": "Nothing Yet",
+        "lastReadOn": Timestamp.fromDate(DateTime.now()),
+        "friends": [username]
+      }
+    );
   }
 
   /// Deletes the user based on the passed username
