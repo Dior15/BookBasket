@@ -23,5 +23,44 @@ extension Friends on FirebaseDB {
     };
   }
 
+  Stream<Map<String, dynamic>> getFriendInfoStream(String username) {
+    return FirebaseDB._database
+        .collection("friends")
+        .where("username", isEqualTo: username)
+        .limit(1)
+        .snapshots()
+        .map((querySnapshot) {
+      if (querySnapshot.docs.isEmpty) return {};
+
+      final doc = querySnapshot.docs.first;
+      return {
+        "username": doc["username"],
+        "lastReadBook": doc["lastReadBook"],
+        // Safely convert the Timestamp into a readable date string
+        "lastReadOn": doc["lastReadOn"].toDate().toString().substring(0, 10),
+        "friends": doc["friends"]
+      };
+    });
+  }
+
+  /// Updates the last book read and timestamp in the friends collection
+  Future<void> updateLastReadBook(String username, String bookTitle) async {
+    QuerySnapshot<Map<String, dynamic>> friendQuery = await FirebaseDB._database
+        .collection("friends")
+        .where("username", isEqualTo: username)
+        .limit(1)
+        .get();
+
+    if (friendQuery.docs.isNotEmpty) {
+      await FirebaseDB._database
+          .collection("friends")
+          .doc(friendQuery.docs.first.id)
+          .update({
+        "lastReadBook": bookTitle,
+        // Automatically updates the timestamp to the exact moment they opened it
+        "lastReadOn": Timestamp.fromDate(DateTime.now())
+      });
+    }
+  }
 
 }

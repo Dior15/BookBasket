@@ -273,8 +273,23 @@ class BasketState extends State<Basket> {
                                     title: title as String,
                                     color: cardColor,
                                     heroTag: heroTag,
-                                    onTap: () {
-                                      _saveReadingLocation(title);
+                                    onTap: () async {
+                                      // NEW: Update the user's reading status in the background
+                                      String? currentUser = await AuthService.getEmail();
+                                      if (currentUser != null && items != null) {
+                                        // Turns "The Gunslinger.epub" into "The Gunslinger"
+                                        String rawFileName = items[index]["fileName"];
+                                        String cleanTitle = rawFileName.replaceAll(".epub", "");
+
+                                        FirebaseDB.getReference().updateLastReadBook(currentUser, cleanTitle);
+                                      }
+
+                                      // Your existing map marker code
+                                      _saveReadingLocation(title as String);
+
+                                      if (!mounted) return;
+
+                                      // Your existing navigation code
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(

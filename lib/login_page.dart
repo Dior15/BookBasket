@@ -400,8 +400,8 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'Admin: ${AuthService.adminEmail} / ${AuthService.adminPassword}\n'
-                                        'User:  ${AuthService.userEmail} / ${AuthService.userPassword}',
+                                    'Admin: admin@bookbasket.com / admin123\n'
+                                        'User:  user@bookbasket.com / user123',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color: cs.onSurfaceVariant,
