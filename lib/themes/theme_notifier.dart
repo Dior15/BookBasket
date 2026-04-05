@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import '../auth_service.dart';
+import '../firebase_database/firebase_db.dart';
 
 enum ThemeType { light, dark, advanced }
 
 class ThemeNotifier extends ChangeNotifier {
   ThemeType _themeType = ThemeType.light;
 
-  // CHANGED: The background is explicitly a Gradient now
   Gradient _backgroundColor = const LinearGradient(
     colors: [Colors.white, Colors.white],
     begin: Alignment.topCenter,
@@ -16,11 +17,11 @@ class ThemeNotifier extends ChangeNotifier {
   Color _foregroundColor = Colors.black;
 
   ThemeType get themeType => _themeType;
-  Gradient get backgroundColor => _backgroundColor; // Returns a Gradient
+  Gradient get backgroundColor => _backgroundColor;
   Color get foregroundColor => _foregroundColor;
 
   ThemeNotifier() {
-    _loadFromPrefs();
+    loadFromCloud();
   }
 
   void setLightMode() {
@@ -31,7 +32,7 @@ class ThemeNotifier extends ChangeNotifier {
       end: Alignment.bottomCenter,
     );
     _foregroundColor = Colors.black;
-    _saveToPrefs();
+    _saveToCloud();
     notifyListeners();
   }
 
@@ -43,75 +44,90 @@ class ThemeNotifier extends ChangeNotifier {
       end: Alignment.bottomCenter,
     );
     _foregroundColor = Colors.white;
-    _saveToPrefs();
+    _saveToCloud();
     notifyListeners();
   }
 
   void setAdvancedMode() {
     _themeType = ThemeType.advanced;
-    _saveToPrefs();
+    _saveToCloud();
     notifyListeners();
   }
 
-  // CHANGED: Accepts a Gradient instead of a Color
   void setBackgroundColor(Gradient gradient) {
     _backgroundColor = gradient;
-    _saveToPrefs();
+    _saveToCloud();
     notifyListeners();
   }
 
   void setForegroundColor(Color color) {
     _foregroundColor = color;
-    _saveToPrefs();
+    _saveToCloud();
     notifyListeners();
   }
 
-  Future<void> _loadFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
+  // --- NEW: Load App Theme from Firebase ---
+  Future<void> loadFromCloud() async {
+    try {
+      final email = await AuthService.getEmail() ?? AuthService.userEmail;
+      final prefs = await FirebaseDB.getReference().getUserPreferences(email);
 
-    // Load Theme Type
-    final themeString = prefs.getString('theme_type') ?? 'light';
-    _themeType = ThemeType.values.firstWhere(
-            (e) => e.name == themeString,
-        orElse: () => ThemeType.light
-    );
-
-    // Load Foreground Color
-    final fgValue = prefs.getInt('foreground_color') ?? Colors.black.value;
-    _foregroundColor = Color(fgValue);
-
-    // Load Background Gradient
-    final bgColorsString = prefs.getStringList('background_gradient_colors');
-    if (bgColorsString != null && bgColorsString.isNotEmpty) {
-      final colors = bgColorsString.map((s) => Color(int.parse(s))).toList();
-      _backgroundColor = LinearGradient(
-        colors: colors,
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
+      // Load Theme Type
+      final themeString = prefs['theme_type'] ?? 'light';
+      _themeType = ThemeType.values.firstWhere(
+              (e) => e.name == themeString,
+          orElse: () => ThemeType.light
       );
-    } else {
-      // Fallback default if nothing is saved
-      _backgroundColor = const LinearGradient(
-        colors: [Colors.white, Colors.white],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      );
+
+      // Load Foreground Color
+      final fgValue = prefs['foreground_color'] ?? Colors.black.value;
+      _foregroundColor = Color(fgValue);
+
+      // Load Background Gradient
+      final bgColorsString = prefs['background_gradient_colors'];
+      if (bgColorsString != null && (bgColorsString as List).isNotEmpty) {
+        final colors = (bgColorsString as List).map((s) => Color(int.parse(s.toString()))).toList();
+        _backgroundColor = LinearGradient(
+          colors: colors,
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        );
+      } else {
+        // Fallback default if nothing is saved
+        _backgroundColor = const LinearGradient(
+          colors: [Colors.white, Colors.white],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        );
+      }
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error loading cloud theme preferences: $e");
     }
-
-    notifyListeners();
   }
 
-  Future<void> _saveToPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
+  // --- NEW: Save App Theme to Firebase ---
+  Future<void> _saveToCloud() async {
+    try {
+      final email = await AuthService.getEmail() ?? AuthService.userEmail;
 
-    await prefs.setString('theme_type', _themeType.name);
-    await prefs.setInt('foreground_color', _foregroundColor.value);
+      Map<String, dynamic> newPrefs = {
+        'theme_type': _themeType.name,
+        'foreground_color': _foregroundColor.value,
+      };
 
-    // Save Background Gradient
-    if (_backgroundColor is LinearGradient) {
-      final linearGradient = _backgroundColor as LinearGradient;
-      final colorStrings = linearGradient.colors.map((c) => c.value.toString()).toList();
-      await prefs.setStringList('background_gradient_colors', colorStrings);
+      // Save Background Gradient
+      if (_backgroundColor is LinearGradient) {
+        final linearGradient = _backgroundColor as LinearGradient;
+        final colorStrings = linearGradient.colors.map((c) => c.value.toString()).toList();
+        newPrefs['background_gradient_colors'] = colorStrings;
+      }
+
+      await FirebaseDB.getReference().updateUserPreference(email, newPrefs);
+
+    } catch (e) {
+      debugPrint("Error saving theme to cloud: $e");
     }
   }
 }

@@ -87,41 +87,62 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final themeName = prefs.getString('reader_theme') ?? 'light';
-    final savedFontFamily = prefs.getString('reader_font_family') ?? 'System Default';
-    final savedFontSize = prefs.getDouble('reader_font_size') ?? 18.0;
+    try {
+      final email = await AuthService.getEmail() ?? AuthService.userEmail;
+      final prefs = await FirebaseDB.getReference().getUserPreferences(email);
 
-    if (mounted) {
-      setState(() {
-        _readerTheme = ReaderTheme.values.firstWhere(
-              (e) => e.name == themeName,
-          orElse: () => ReaderTheme.light,
-        );
-        _fontFamily = savedFontFamily;
-        _fontSize = savedFontSize;
+      if (mounted) {
+        setState(() {
+          _readerTheme = ReaderTheme.values.firstWhere(
+                (e) => e.name == prefs["readerTheme"],
+            orElse: () => ReaderTheme.light,
+          );
+          _fontFamily = prefs["readerFontFamily"];
+          // We use 'as num' to safely handle if Firestore returns an int (like 18) instead of a double (18.0)
+          _fontSize = (prefs["readerFontSize"] as num).toDouble();
 
-        _parser = EpubParser(
-          fontFamily: _fontFamily == 'System Default' ? null : _fontFamily,
-          fontSize: _fontSize,
-        );
-      });
+          _parser = EpubParser(
+            fontFamily: _fontFamily == 'System Default' ? null : _fontFamily,
+            fontSize: _fontSize,
+          );
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading cloud preferences: $e");
     }
   }
 
   Future<void> _saveTheme(ReaderTheme theme) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('reader_theme', theme.name);
+    try {
+      final email = await AuthService.getEmail() ?? AuthService.userEmail;
+      await FirebaseDB.getReference().updateUserPreference(email, {
+        "readerTheme": theme.name
+      });
+    } catch (e) {
+      debugPrint("Error saving theme to cloud: $e");
+    }
   }
 
   Future<void> _saveFontFamily(String family) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('reader_font_family', family);
+    try {
+      final email = await AuthService.getEmail() ?? AuthService.userEmail;
+      await FirebaseDB.getReference().updateUserPreference(email, {
+        "readerFontFamily": family
+      });
+    } catch (e) {
+      debugPrint("Error saving font family to cloud: $e");
+    }
   }
 
   Future<void> _saveFontSize(double size) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble('reader_font_size', size);
+    try {
+      final email = await AuthService.getEmail() ?? AuthService.userEmail;
+      await FirebaseDB.getReference().updateUserPreference(email, {
+        "readerFontSize": size
+      });
+    } catch (e) {
+      debugPrint("Error saving font size to cloud: $e");
+    }
   }
 
   Future<void> _loadBookmarks() async {

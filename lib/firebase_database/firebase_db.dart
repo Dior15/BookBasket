@@ -10,6 +10,7 @@ part "firebase_db_ratings.dart";
 part "firebase_db_markers.dart";
 part "firebase_db_friends.dart";
 part 'firebase_db_progress.dart';
+part 'firebase_db_preferences.dart';
 
 class FirebaseDB {
   static final FirebaseDB _db = FirebaseDB();

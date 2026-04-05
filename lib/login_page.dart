@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:provider/provider.dart';
 
 import 'auth_service.dart';
 import 'sign_up.dart';
 import 'animations/shake.dart';
 import 'navigation/drawer_shell.dart';
 import 'firebase_database/firebase_db.dart';
+import 'themes/theme_notifier.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -57,6 +59,12 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     final admin = await AuthService.isAdmin();
+    if (!mounted) return;
+
+    if (mounted) {
+      Provider.of<ThemeNotifier>(context, listen: false).loadFromCloud();
+    }
+
     if (!mounted) return;
 
     Navigator.pushReplacement(
@@ -126,6 +134,10 @@ class _LoginPageState extends State<LoginPage> {
       await AuthService.loginWithGoogle(safeEmail);
 
       if (!mounted) return;
+
+      if (mounted) {
+        Provider.of<ThemeNotifier>(context, listen: false).loadFromCloud();
+      }
 
       Navigator.pushReplacement(
         context,

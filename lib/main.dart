@@ -112,6 +112,12 @@ class _AuthGateState extends State<AuthGate> {
   Future<void> _load() async {
     final loggedIn = await AuthService.isLoggedIn();
     final admin = loggedIn ? await AuthService.isAdmin() : false;
+
+    // NEW: If they are a returning user, fetch their cloud theme right now!
+    if (loggedIn && mounted) {
+      Provider.of<ThemeNotifier>(context, listen: false).loadFromCloud();
+    }
+
     if (!mounted) return;
     setState(() {
       _loggedIn = loggedIn;
