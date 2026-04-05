@@ -3,11 +3,23 @@ import 'auth_service.dart';
 import 'firebase_database/firebase_db.dart';
 
 class FriendsListPage extends StatefulWidget {
+  const FriendsListPage({super.key});
+
   @override
   State<StatefulWidget> createState() => FriendsListState();
 }
 
 class FriendsListState extends State<FriendsListPage> {
+
+  late Future<List<Map<String, dynamic>>> _friendsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    // Assign the Future exactly once when the page loads
+    _friendsFuture = FriendInfoManager.getFriendInfo();
+  }
+
   Widget heroCard() {
     return Container(
       width: double.infinity,
@@ -28,10 +40,10 @@ class FriendsListState extends State<FriendsListPage> {
           ),
         ],
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.groups_rounded, color: Colors.white, size: 26),
               SizedBox(width: 10),
@@ -39,164 +51,308 @@ class FriendsListState extends State<FriendsListPage> {
                 'Reading Friends',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
-            'See what your friends are reading, share recommendations, and keep your reading circle active.',
+            'See what your friends are reading and discover new books together.',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.85),
-              height: 1.3,
+              color: Colors.white70,
+              fontSize: 14,
+              height: 1.4,
             ),
           ),
-          const SizedBox(height: 14),
         ],
       ),
     );
   }
 
   @override
-  @override
-  void initState() {
-    super.initState();
-    FriendInfoManager.getFriendInfo();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         heroCard(),
         Expanded(
-          child:
-            RefreshIndicator(
-              onRefresh: () async {
-                await FriendInfoManager.getFriendInfo();
-                setState(() {});
-              },
-              child: FutureBuilder(
-                future: FriendInfoManager.friendData,
-                builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-                  List<Map<String, dynamic>> data = [];
+            child: FutureBuilder(
+              future: _friendsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    data = [];
-                  } else if (snapshot.hasData) {
-                    data = snapshot.data;
-                  }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(child: Text("No friends found."));
+                }
 
-                  return ListView.builder(
-                    itemCount: data.length,
-                    itemBuilder: (context, index) {
-                      return Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.fromLTRB(16, 3, 16, 3),
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(18),
-                          color: Colors.white.withValues(),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF1A237E).withOpacity(0.28),
-                              blurRadius: 16,
-                              offset: const Offset(0, 6),
+                List<Map<String, dynamic>> data = snapshot.data!;
+
+                return ListView.builder(
+                  itemCount: data.length,
+                  itemBuilder: (context, index) {
+                    final friend = data[index];
+                    final String heroTagAvatar = 'avatar_${friend["username"]}_$index';
+                    final String heroTagName = 'name_${friend["username"]}_$index';
+
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FriendDetailPage(
+                              friendData: friend,
+                              avatarTag: heroTagAvatar,
+                              nameTag: heroTagName,
                             ),
-                          ],
-                        ),
-                        child:
-                        Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 24, // size
-                              backgroundColor: Colors.indigo,
-                              child: Text(
-                                data[index]["username"].toString().substring(0, 1).toUpperCase(),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
                               ),
-                            ),
-                            SizedBox(width: 8),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  data[index]["username"],
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Hero(
+                                tag: heroTagAvatar,
+                                child: CircleAvatar(
+                                  radius: 25,
+                                  backgroundColor: const Color(0xFF3949AB),
+                                  child: Text(
+                                    friend["username"].toString().substring(0, 1).toUpperCase(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 20,
+                                    ),
                                   ),
                                 ),
-                                Row(
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          "Last Read: ",
-                                          style: TextStyle(
-                                              fontSize: 14,
+                                    Hero(
+                                      tag: heroTagName,
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: Text(
+                                          friend["username"],
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                        Text(
-                                          "Read On: ",
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ],
+                                      ),
                                     ),
+                                    const SizedBox(height: 4),
                                     Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                            data[index]["lastReadBook"],
-                                          style: TextStyle(
+                                          friend["lastReadBook"],
+                                          style: const TextStyle(
                                             fontSize: 14,
+                                            color: Colors.grey,
                                           ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                         Text(
-                                          data[index]["lastReadOn"],
-                                          style: TextStyle(
-                                            fontSize: 14,
+                                          friend["lastReadOn"],
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey,
                                           ),
                                         )
                                       ],
                                     )
                                   ],
-                                )
-                              ]
-                            )
-                          ],
-                        )
-                      );
-                    }
-                  );
-                },
-              )
+                                ),
+                              )
+                            ],
+                          )
+                      ),
+                    );
+                  },
+                );
+              },
             )
         )
-      ]
+      ],
     );
   }
 }
 
 class FriendInfoManager {
-  static Future<List<Map<String, dynamic>>> friendData = Future.value([]);
-
-  static Future<void> getFriendInfo() async {
+  // We change this to return the Future directly instead of saving it to a static variable
+  static Future<List<Map<String, dynamic>>> getFriendInfo() async {
     String? username = await AuthService.getEmail();
-    Map<String, dynamic> currentUserFriendInfo = await FirebaseDB.getReference().getFriendInfo(username!);
+    if (username == null) return []; // Safety check
 
-    friendData = Future.wait(List<String>.from(currentUserFriendInfo["friends"]).map((friend) async {
+    Map<String, dynamic> currentUserFriendInfo = await FirebaseDB.getReference().getFriendInfo(username);
+
+    // FIX 1: Safely handle if the "friends" field is null, missing, or empty
+    List<dynamic> rawFriends = currentUserFriendInfo["friends"] ?? [];
+    List<String> friendsList = rawFriends.whereType<String>().toList();
+
+    if (friendsList.isEmpty) {
+      return []; // Return an empty list instead of crashing
+    }
+
+    // Wait for all the friend data to fetch and return it
+    return await Future.wait(friendsList.map((friend) async {
       return await FirebaseDB.getReference().getFriendInfo(friend);
     }).toList());
+  }
+}
+
+// --- NEW: The Detail Page that the user expands into ---
+class FriendDetailPage extends StatelessWidget {
+  final Map<String, dynamic> friendData;
+  final String avatarTag;
+  final String nameTag;
+
+  const FriendDetailPage({
+    super.key,
+    required this.friendData,
+    required this.avatarTag,
+    required this.nameTag,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: IconThemeData(color: Theme.of(context).iconTheme.color),
+      ),
+      extendBodyBehindAppBar: true,
+      body: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Theme.of(context).scaffoldBackgroundColor,
+              Theme.of(context).scaffoldBackgroundColor.withOpacity(0.9),
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              const SizedBox(height: 40),
+              Hero(
+                tag: avatarTag,
+                child: CircleAvatar(
+                  radius: 60,
+                  backgroundColor: const Color(0xFF3949AB),
+                  child: Text(
+                    friendData["username"].toString().substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 50,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Hero(
+                tag: nameTag,
+                child: Material(
+                  color: Colors.transparent,
+                  child: Text(
+                    friendData["username"],
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+
+              // Extra Details Card
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.menu_book_rounded, size: 40, color: Color(0xFF3949AB)),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Currently Reading",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        friendData["lastReadBook"],
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Divider(height: 40),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.access_time_rounded, size: 18, color: Colors.grey),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Last active: ${friendData["lastReadOn"]}",
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                ),
+              )
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
