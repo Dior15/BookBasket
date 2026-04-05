@@ -9,6 +9,9 @@ import 'epub_models.dart';
 import 'epub_parser.dart';
 import '../animations/page_flip.dart';
 
+import '../auth_service.dart';
+import '../firebase_database/firebase_db.dart';
+
 enum ReaderTheme { light, dark, sepia }
 
 class ReaderThemeColors {
@@ -197,8 +200,9 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
 
     _pages = newPages;
 
-    final prefs = await SharedPreferences.getInstance();
-    final savedPage = prefs.getInt('epub_pos_${_title!.hashCode}') ?? 0;
+    // --- NEW: Load progress from Firebase instead of local SharedPreferences ---
+    final email = await AuthService.getEmail() ?? AuthService.userEmail;
+    final savedPage = await FirebaseDB.getReference().getReadingProgress(email, _title!);
 
     _currentPage = (savedPage < _pages.length) ? savedPage : 0;
     _pageController = PageController(initialPage: _currentPage);
@@ -225,10 +229,11 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     _saveFontFamily(newFamily);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final prefs = await SharedPreferences.getInstance();
       int fallbackIndex = _pages.indexWhere((p) => p.sectionIndex == currentSection);
       if (fallbackIndex == -1) fallbackIndex = 0;
-      await prefs.setInt('epub_pos_${_title!.hashCode}', fallbackIndex);
+
+      final email = await AuthService.getEmail() ?? AuthService.userEmail;
+      await FirebaseDB.getReference().saveReadingProgress(email, _title!, fallbackIndex);
     });
   }
 
@@ -370,9 +375,12 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     );
   }
 
+  // --- NEW: Save progress to Firebase ---
   Future<void> _saveProgress(int index) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('epub_pos_${_title!.hashCode}', index);
+    if (_title == null) return;
+
+    final email = await AuthService.getEmail() ?? AuthService.userEmail;
+    await FirebaseDB.getReference().saveReadingProgress(email, _title!, index);
   }
 
   Widget _buildTapZones() {
