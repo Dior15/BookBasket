@@ -11,12 +11,14 @@ class BookDetailsPage extends StatefulWidget {
   final String title;
   final Color color;
   final String heroTag;
+  String? availableOn;
 
-  const BookDetailsPage({
+  BookDetailsPage({
     super.key,
     required this.title,
     required this.color,
     required this.heroTag,
+    this.availableOn
   });
 
   @override
@@ -142,6 +144,7 @@ class _BookDetailsPageState extends State<BookDetailsPage> with CoverLoader {
             color: Theme.of(context).colorScheme.surfaceContainerHighest
                 .withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.black12)
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -165,6 +168,17 @@ class _BookDetailsPageState extends State<BookDetailsPage> with CoverLoader {
                     ),
             ],
           ),
+        ),
+        SizedBox(height: 5),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest
+                .withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.black12)
+          ),
+          child: Text(widget.availableOn == null ? "Available to Borrow!" : "Next Available On: ${widget.availableOn}")
         ),
       ],
     );
@@ -233,40 +247,47 @@ class _BookDetailsPageState extends State<BookDetailsPage> with CoverLoader {
             // ── Star rating section ───────────────────────────────────────
             _starRatingSection(),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 5),
 
             // ── Checkout button ───────────────────────────────────────────
-            TextButton(
-              onPressed: () async {
-                final email = await AuthService.getEmail();
-                final db = FirebaseDB.getReference();
-                final checkoutID =
-                    await db.checkOutBook(email!, widget.title);
-                if (!context.mounted) return;
-                if (checkoutID == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('$displayTitle is unavailable right now.'),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content:
-                          Text('Successfully checked out $displayTitle'),
-                      backgroundColor: Colors.green,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-                if (!context.mounted) return;
-                context.read<BasketContentManager>().reload();
-              },
-              child: Text('Checkout $displayTitle'),
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest
+                    .withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.black12)
+              ),
+              child: TextButton(
+                onPressed: () async {
+                  final email = await AuthService.getEmail();
+                  final db = FirebaseDB.getReference();
+                  final checkoutID =
+                  await db.checkOutBook(email!, widget.title);
+                  if (!context.mounted) return;
+                  if (checkoutID == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('$displayTitle is unavailable right now.'),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content:
+                        Text('Successfully checked out $displayTitle'),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                  if (!context.mounted) return;
+                  context.read<BasketContentManager>().reload();
+                },
+                child: Text('Checkout $displayTitle'),
+              ),
             ),
-
             const SizedBox(height: 30),
           ],
         ),

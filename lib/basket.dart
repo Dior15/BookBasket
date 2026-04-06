@@ -262,9 +262,9 @@ class BasketState extends State<Basket> {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(14),
                                 color: Colors.black.withOpacity(0.18),
-                                border: Border.all(
-                                  color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
-                                ),
+                                // border: Border.all(
+                                //   color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+                                // ),
                               ),
                               padding: const EdgeInsets.all(4),
                               child: Column(

@@ -43,13 +43,14 @@ class CatalogState extends State<Catalog> with CoverLoader{
     setState(() {});
   }
 
-  void _openDetails(String title, Color color, String heroTag) {
+  void _openDetails(String title, Color color, String heroTag, String? availableOn) {
     Navigator.of(context).push(
       AppPageRoute(
         builder: (_) => BookDetailsPage(
           title: title,
           color: color,
           heroTag: heroTag,
+          availableOn: availableOn
         ),
       ),
     );
@@ -194,7 +195,7 @@ class CatalogState extends State<Catalog> with CoverLoader{
                   title: title,
                   color: color,
                   heroTag: heroTag,
-                  onTap: () => _openDetails(title, color, heroTag),
+                  onTap: () async => _openDetails(title, color, heroTag, await FirebaseDB.getReference().getBookCheckoutExpiration(title)),
                   // coverPath: cover,
                   coverPath: bookFileNames == null ? "" : bookFileNames[index].length < 5 ? "" : "assets/book_covers/${bookFileNames[index].substring(0, bookFileNames[index].length - 5)}.jpg"
                 ),

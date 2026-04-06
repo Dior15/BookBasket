@@ -92,4 +92,22 @@ extension BookCheckout on FirebaseDB {
       };
     }).toList();
   }
+
+  /// Pass book fileName, receive the book's current checkout expiry
+  Future<String?> getBookCheckoutExpiration(String fileName) async {
+    QuerySnapshot query = await FirebaseDB._database
+      .collection("bookCheckout")
+      .where("fileName", isEqualTo: fileName)
+      .limit(1)
+      .get();
+
+    if (query.docs.isNotEmpty) {
+      if (query.docs.first["checkoutExpiry"].toDate().isBefore(DateTime.now())) {
+        return(null);
+      }
+      return(query.docs.first["checkoutExpiry"].toDate().toString().substring(0, 10));
+    } else {
+      return(null);
+    }
+  }
 }
