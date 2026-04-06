@@ -14,6 +14,9 @@ class FriendsListState extends State<FriendsListPage> {
   // We hold the live list of friend data here
   List<Map<String, dynamic>> _friendsData = [];
   bool _isLoading = true;
+  String? _currentUsername;
+  // Tracks which friend card is showing the remove X
+  String? _selectedFriendForRemoval;
 
   StreamSubscription? _currentUserSub;
   List<StreamSubscription> _friendSubs = [];
@@ -37,6 +40,7 @@ class FriendsListState extends State<FriendsListPage> {
   Future<void> _listenToFriends() async {
     String? currentUsername = await AuthService.getEmail();
     if (currentUsername == null) return;
+    _currentUsername = currentUsername;
 
     // 1. Listen to the current user's document to get their friend list
     _currentUserSub = FirebaseDB.getReference()
@@ -83,6 +87,112 @@ class FriendsListState extends State<FriendsListPage> {
         _friendSubs.add(sub);
       }
     });
+  }
+
+  Future<void> _showAddFriendDialog() async {
+    final TextEditingController emailController = TextEditingController();
+    bool isLoading = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.person_add_rounded, color: Color(0xFF3949AB), size: 26),
+                  SizedBox(width: 10),
+                  Text(
+                    'Add Friend',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "Enter your friend's email",
+                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: 'Email address',
+                      hintText: 'friend@example.com',
+                      prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF3949AB)),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF3949AB), width: 2),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF3949AB),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          final email = emailController.text.trim();
+                          if (email.isEmpty) return;
+
+                          setDialogState(() => isLoading = true);
+
+                          final error = await FirebaseDB.getReference()
+                              .addFriend(_currentUsername!, email);
+
+                          if (!dialogContext.mounted) return;
+                          Navigator.pop(dialogContext);
+
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                error ?? 'Friend added successfully! 🎉',
+                              ),
+                              backgroundColor: error != null
+                                  ? Colors.redAccent
+                                  : const Color(0xFF3949AB),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          );
+                        },
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Add Friend'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget heroCard() {
@@ -139,115 +249,195 @@ class FriendsListState extends State<FriendsListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Stack(
       children: [
-        heroCard(),
-        Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _friendsData.isEmpty
-                ? const Center(child: Text("No friends found."))
-                : ListView.builder(
-              itemCount: _friendsData.length,
-              itemBuilder: (context, index) {
-                final friend = _friendsData[index];
-                final String heroTagAvatar = 'avatar_${friend["username"]}_$index';
-                final String heroTagName = 'name_${friend["username"]}_$index';
+        Column(
+          children: [
+            heroCard(),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _friendsData.isEmpty
+                      ? const Center(child: Text("No friends found."))
+                      : ListView.builder(
+                          itemCount: _friendsData.length,
+                          itemBuilder: (context, index) {
+                            final friend = _friendsData[index];
+                            final String heroTagAvatar = 'avatar_${friend["username"]}_$index';
+                            final String heroTagName = 'name_${friend["username"]}_$index';                            final bool isSelected =
+                                _selectedFriendForRemoval == friend["username"];
 
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => FriendDetailPage(
-                          friendData: friend,
-                          avatarTag: heroTagAvatar,
-                          nameTag: heroTagName,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Hero(
-                            tag: heroTagAvatar,
-                            child: CircleAvatar(
-                              radius: 25,
-                              backgroundColor: const Color(0xFF3949AB),
-                              child: Text(
-                                friend["username"].toString().substring(0, 1).toUpperCase(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Hero(
-                                  tag: heroTagName,
-                                  child: Material(
-                                    color: Colors.transparent,
-                                    child: Text(
-                                      friend["username"],
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                            return GestureDetector(
+                              onTap: () {
+                                if (_selectedFriendForRemoval != null) {
+                                  // Tap anywhere to dismiss the X
+                                  setState(() => _selectedFriendForRemoval = null);
+                                  return;
+                                }
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => FriendDetailPage(
+                                      friendData: friend,
+                                      avatarTag: heroTagAvatar,
+                                      nameTag: heroTagName,
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 4),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      friend["lastReadBook"] ?? "Nothing yet",
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                );
+                              },
+                              onLongPress: () {
+                                setState(() {
+                                  _selectedFriendForRemoval = friend["username"];
+                                });
+                              },
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? Colors.red.withOpacity(0.06)
+                                          : Theme.of(context).cardColor,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: isSelected
+                                          ? Border.all(color: Colors.redAccent.withOpacity(0.4), width: 1.5)
+                                          : null,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.05),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
                                     ),
-                                    Text(
-                                      friend["lastReadOn"] ?? "",
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey,
+                                    child: Row(
+                                      children: [
+                                        Hero(
+                                          tag: heroTagAvatar,
+                                          child: CircleAvatar(
+                                            radius: 25,
+                                            backgroundColor: const Color(0xFF3949AB),
+                                            child: Text(
+                                              friend["username"].toString().substring(0, 1).toUpperCase(),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 20,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Hero(
+                                                tag: heroTagName,
+                                                child: Material(
+                                                  color: Colors.transparent,
+                                                  child: Text(
+                                                    friend["username"],
+                                                    style: const TextStyle(
+                                                      fontSize: 18,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    friend["lastReadBook"] ?? "Nothing yet",
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      color: Colors.grey,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                  Text(
+                                                    friend["lastReadOn"] ?? "",
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors.grey,
+                                                    ),
+                                                  )
+                                                ],
+                                              )
+                                            ],
+                                          ),
+                                        )
+                                      ],
+                                    ),
+                                  ),
+
+                                  // X remove button — top right corner
+                                  if (isSelected)
+                                    Positioned(
+                                      top: -6,
+                                      right: 10,
+                                      child: GestureDetector(
+                                        onTap: () async {
+                                          setState(() => _selectedFriendForRemoval = null);
+                                          await FirebaseDB.getReference().removeFriend(
+                                            _currentUsername!,
+                                            friend["username"],
+                                          );
+                                        },
+                                        child: Container(
+                                          width: 26,
+                                          height: 26,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.redAccent,
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black26,
+                                                blurRadius: 4,
+                                                offset: Offset(0, 2),
+                                              )
+                                            ],
+                                          ),
+                                          child: const Icon(
+                                            Icons.close_rounded,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                        ),
                                       ),
-                                    )
-                                  ],
-                                )
-                              ],
-                            ),
-                          )
-                        ],
-                      )
-                  ),
-                );
-              },
-            )
-        )
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+
+        // Floating Action Button — bottom right
+        if (_currentUsername != null)
+          Positioned(
+            bottom: 24,
+            right: 20,
+            child: FloatingActionButton.extended(
+              onPressed: _showAddFriendDialog,
+              backgroundColor: const Color(0xFF3949AB),
+              foregroundColor: Colors.white,
+              elevation: 6,
+              icon: const Icon(Icons.person_add_rounded),
+              label: const Text(
+                'Add Friend',
+                style: TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.3),
+              ),
+            ),
+          ),
       ],
     );
   }
