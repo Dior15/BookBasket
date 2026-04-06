@@ -86,7 +86,7 @@ class BasketState extends State<Basket> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$count book${count == 1 ? '' : 's'} ready to read',
+                  '$count book${count == 1 ? '' : 's'} ready to read. \nPress and hold to return a book.',
                   style: const TextStyle(color: Colors.white70),
                 ),
               ],

@@ -235,7 +235,7 @@ class FriendsListState extends State<FriendsListPage> {
           ),
           SizedBox(height: 8),
           Text(
-            'See what your friends are reading and discover new books together.',
+            'See what your friends are reading and discover new books together. \nPress and hold to remove a friend.',
             style: TextStyle(
               color: Colors.white70,
               fontSize: 14,
@@ -264,7 +264,8 @@ class FriendsListState extends State<FriendsListPage> {
                           itemBuilder: (context, index) {
                             final friend = _friendsData[index];
                             final String heroTagAvatar = 'avatar_${friend["username"]}_$index';
-                            final String heroTagName = 'name_${friend["username"]}_$index';                            final bool isSelected =
+                            final String heroTagName = 'name_${friend["username"]}_$index';
+                            final bool isSelected =
                                 _selectedFriendForRemoval == friend["username"];
 
                             return GestureDetector(
