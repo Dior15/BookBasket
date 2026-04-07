@@ -1,15 +1,18 @@
-﻿import 'package:bookbasket/map/map.dart';
+﻿import 'dart:async';
+
+import 'package:bookbasket/map/map.dart';
 import 'package:flutter/material.dart';
 
 import '../admin.dart';
 import '../auth_service.dart';
 import '../basket.dart';
 import '../catalog.dart';
+import '../firebase_database/firebase_db.dart';
+import '../friends_list.dart';
 import '../login_page.dart';
 import '../preferences_page.dart';
 import '../search.dart';
 import 'app_drawer.dart';
-import '../friends_list.dart';
 
 class DrawerShell extends StatefulWidget {
   /// When [isAdmin] is true the Admin panel destination is included.
@@ -23,13 +26,43 @@ class DrawerShell extends StatefulWidget {
 
 class _DrawerShellState extends State<DrawerShell> {
   late int _index;
-  late final List<DrawerDestination> _destinations;
+
+  final FirebaseDB _db = FirebaseDB.getReference();
+  StreamSubscription<Map<String, dynamic>>? _friendInfoSubscription;
+
+  int _incomingRequestCount = 0;
 
   @override
   void initState() {
     super.initState();
-    _destinations = _buildDestinations(widget.isAdmin);
     _index = 0;
+    _listenForFriendRequests();
+  }
+
+  @override
+  void dispose() {
+    _friendInfoSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _listenForFriendRequests() async {
+    final email = await AuthService.getEmail();
+    if (email == null) return;
+
+    final currentUser = email.trim().toLowerCase();
+
+    _friendInfoSubscription =
+        _db.getFriendInfoStream(currentUser).listen((friendData) {
+          if (!mounted) return;
+
+          final incoming = List<String>.from(
+            friendData['incomingRequests'] ?? const [],
+          );
+
+          setState(() {
+            _incomingRequestCount = incoming.length;
+          });
+        });
   }
 
   List<DrawerDestination> _buildDestinations(bool isAdmin) {
@@ -48,7 +81,6 @@ class _DrawerShellState extends State<DrawerShell> {
         title: 'Basket',
         icon: Icons.shopping_basket,
         builder: (_) => Basket(),
-        // builder: (_) => Basket(key: UniqueKey()),
       ),
       DrawerDestination(
         title: 'Reading Map',
@@ -58,7 +90,8 @@ class _DrawerShellState extends State<DrawerShell> {
       DrawerDestination(
         title: 'Friends',
         icon: Icons.groups_rounded,
-        builder: (_) => FriendsListPage(),
+        builder: (_) => const FriendsListPage(),
+        badgeCount: _incomingRequestCount,
       ),
       DrawerDestination(
         title: 'Preferences',
@@ -75,7 +108,8 @@ class _DrawerShellState extends State<DrawerShell> {
   }
 
   void _selectIndex(int newIndex) {
-    final clamped = newIndex.clamp(0, _destinations.length - 1);
+    final destinations = _buildDestinations(widget.isAdmin);
+    final clamped = newIndex.clamp(0, destinations.length - 1);
     setState(() => _index = clamped);
     Navigator.pop(context);
   }
@@ -91,7 +125,8 @@ class _DrawerShellState extends State<DrawerShell> {
 
   @override
   Widget build(BuildContext context) {
-    final dest = _destinations[_index];
+    final destinations = _buildDestinations(widget.isAdmin);
+    final dest = destinations[_index];
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -117,12 +152,12 @@ class _DrawerShellState extends State<DrawerShell> {
       drawer: AppDrawer(
         selectedIndex: _index,
         onSelect: _selectIndex,
-        destinations: _destinations,
+        destinations: destinations,
         onLogout: _handleLogout,
       ),
       body: IndexedStack(
         index: _index,
-        children: _destinations
+        children: destinations
             .map((destination) => Builder(builder: destination.builder))
             .toList(),
       ),

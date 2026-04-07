@@ -4,9 +4,9 @@ extension Users on FirebaseDB {
   /// Receive a list of all users in the database
   Future<List<Map<String, dynamic>>> getUsers() async {
     QuerySnapshot<Map<String, dynamic>> query = await FirebaseDB._database
-      .collection("users")
-      .orderBy("username")
-      .get();
+        .collection("users")
+        .orderBy("username")
+        .get();
 
     return query.docs.map((document) {
       return document.data();
@@ -21,18 +21,18 @@ extension Users on FirebaseDB {
         .where("password", isEqualTo: password)
         .get();
 
-    return(query.docs.length == 1);
+    return query.docs.length == 1;
   }
 
   /// Checks if the passed user is an admin
   Future<bool> isAdmin(String username) async {
     QuerySnapshot<Map<String, dynamic>> query = await FirebaseDB._database
-      .collection("users")
-      .where("username", isEqualTo: username)
-      .limit(1)
-      .get();
+        .collection("users")
+        .where("username", isEqualTo: username)
+        .limit(1)
+        .get();
 
-    return(query.docs.first["isAdmin"]);
+    return query.docs.first["isAdmin"];
   }
 
   /// Changes the passed user to have the passed role
@@ -45,29 +45,30 @@ extension Users on FirebaseDB {
 
     if (query.docs.first.exists) {
       await FirebaseDB._database
-        .collection("users")
-        .doc(query.docs.first.id)
-        .update({"isAdmin": isAdmin});
+          .collection("users")
+          .doc(query.docs.first.id)
+          .update({"isAdmin": isAdmin});
     }
   }
 
   /// Add a user from the passed information
   Future<void> addUser(String username, String password, bool isAdmin) async {
-    await FirebaseDB._database
-        .collection("users")
-        .add({"username": username, "password": password, "isAdmin": isAdmin});
+    final safeUsername = username.trim().toLowerCase();
 
-    // Insert to friend table with default information
-    await FirebaseDB._database
-      .collection("friends")
-      .add(
-      {
-        "username": username,
-        "lastReadBook": "Nothing Yet",
-        "lastReadOn": Timestamp.fromDate(DateTime.now()),
-        "friends": [username]
-      }
-    );
+    await FirebaseDB._database.collection("users").add({
+      "username": safeUsername,
+      "password": password,
+      "isAdmin": isAdmin,
+    });
+
+    await FirebaseDB._database.collection("friends").add({
+      "username": safeUsername,
+      "lastReadBook": "Nothing Yet",
+      "lastReadOn": Timestamp.fromDate(DateTime.now()),
+      "friends": [safeUsername],
+      "incomingRequests": <String>[],
+      "outgoingRequests": <String>[],
+    });
   }
 
   /// Deletes the user based on the passed username
@@ -80,9 +81,9 @@ extension Users on FirebaseDB {
 
     if (query.docs.isNotEmpty) {
       await FirebaseDB._database
-        .collection("users")
-        .doc(query.docs.first.id)
-        .delete();
+          .collection("users")
+          .doc(query.docs.first.id)
+          .delete();
     }
   }
 
@@ -96,5 +97,4 @@ extension Users on FirebaseDB {
 
     return query.docs.isNotEmpty;
   }
-
 }

@@ -8,11 +8,15 @@ class DrawerDestination {
   /// Optional extra widgets placed in the shell's AppBar actions row.
   final List<Widget> Function(BuildContext context)? actionsBuilder;
 
+  /// Optional badge count shown on the right side of the tile.
+  final int badgeCount;
+
   const DrawerDestination({
     required this.title,
     required this.icon,
     required this.builder,
     this.actionsBuilder,
+    this.badgeCount = 0,
   });
 }
 
@@ -32,7 +36,6 @@ class AppDrawer extends StatelessWidget {
     required this.onLogout,
   });
 
-  // ── Drawer header with BookBasket logo ────────────────────────────────────
   Widget _buildHeader(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -55,7 +58,6 @@ class AppDrawer extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Logo image
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: Image.asset(
@@ -90,22 +92,48 @@ class AppDrawer extends StatelessWidget {
     );
   }
 
-  // ── Individual nav tile ───────────────────────────────────────────────────
+  Widget _buildBadge(int count) {
+    final displayText = count > 99 ? '99+' : '$count';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      constraints: const BoxConstraints(minWidth: 24),
+      decoration: BoxDecoration(
+        color: Colors.redAccent,
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.redAccent.withOpacity(0.28),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Text(
+        displayText,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
   Widget _buildTile({
     required BuildContext context,
     required DrawerDestination dest,
     required int index,
   }) {
     final bool selected = index == selectedIndex;
-    final Color accentColor = const Color(0xFF3949AB);
+    const Color accentColor = Color(0xFF3949AB);
     final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       child: Material(
-        color: selected
-            ? accentColor.withOpacity(0.12)
-            : Colors.transparent,
+        color: selected ? accentColor.withOpacity(0.12) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -114,40 +142,49 @@ class AppDrawer extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
             decoration: selected
                 ? BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: accentColor.withOpacity(0.3),
-                      width: 1,
-                    ),
-                  )
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: accentColor.withOpacity(0.3),
+                width: 1,
+              ),
+            )
                 : null,
             child: Row(
               children: [
                 Icon(
                   dest.icon,
                   size: 22,
-                  color: selected ? accentColor : colorScheme.onSurface.withOpacity(0.7),
+                  color: selected
+                      ? accentColor
+                      : colorScheme.onSurface.withOpacity(0.7),
                 ),
                 const SizedBox(width: 14),
-                Text(
-                  dest.title,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                    color: selected ? accentColor : colorScheme.onSurface.withOpacity(0.85),
+                Expanded(
+                  child: Text(
+                    dest.title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight:
+                      selected ? FontWeight.w700 : FontWeight.w400,
+                      color: selected
+                          ? accentColor
+                          : colorScheme.onSurface.withOpacity(0.85),
+                    ),
                   ),
                 ),
-                if (selected) ...[  
-                  const Spacer(),
+                if (dest.badgeCount > 0) ...[
+                  _buildBadge(dest.badgeCount),
+                  const SizedBox(width: 10),
+                ],
+                if (selected)
                   Container(
                     width: 6,
                     height: 6,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: accentColor,
                       shape: BoxShape.circle,
                     ),
                   ),
-                ],
               ],
             ),
           ),
