@@ -11,6 +11,7 @@
 # Files with API keys
 lib/firebase_options.dart
 android/app/google-services.json
+lib/summary_service.dart
 
 # Flutter repo-specific
 /bin/cache/
