@@ -11,12 +11,16 @@ class BookDetailsPage extends StatefulWidget {
   final String title;
   final Color color;
   final String heroTag;
+  final String summary;   // Our AI Summary
+  String? availableOn;    // Colleague's Availability check
 
-  const BookDetailsPage({
+  BookDetailsPage({
     super.key,
     required this.title,
     required this.color,
     required this.heroTag,
+    required this.summary,
+    this.availableOn,
   });
 
   @override
@@ -89,39 +93,39 @@ class _BookDetailsPageState extends State<BookDetailsPage> with CoverLoader {
         Text(
           'Your Rating',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.3,
-              ),
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+          ),
         ),
         const SizedBox(height: 6),
         _loadingRating
             ? const SizedBox(
-                height: 36,
-                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-              )
+          height: 36,
+          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        )
             : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (i) {
-                  final starValue = i + 1;
-                  final filled = _userRating != null && starValue <= _userRating!;
-                  return GestureDetector(
-                    onTap: _savingRating ? null : () => _setRating(starValue),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      transitionBuilder: (child, anim) =>
-                          ScaleTransition(scale: anim, child: child),
-                      child: Icon(
-                        filled ? Icons.star_rounded : Icons.star_outline_rounded,
-                        key: ValueKey('$starValue-$filled'),
-                        color: filled
-                            ? const Color(0xFFFFC107)
-                            : Colors.grey.shade400,
-                        size: 38,
-                      ),
-                    ),
-                  );
-                }),
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(5, (i) {
+            final starValue = i + 1;
+            final filled = _userRating != null && starValue <= _userRating!;
+            return GestureDetector(
+              onTap: _savingRating ? null : () => _setRating(starValue),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                transitionBuilder: (child, anim) =>
+                    ScaleTransition(scale: anim, child: child),
+                child: Icon(
+                  filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                  key: ValueKey('$starValue-$filled'),
+                  color: filled
+                      ? const Color(0xFFFFC107)
+                      : Colors.grey.shade400,
+                  size: 38,
+                ),
               ),
+            );
+          }),
+        ),
         const SizedBox(height: 4),
         if (!_loadingRating)
           Text(
@@ -129,8 +133,8 @@ class _BookDetailsPageState extends State<BookDetailsPage> with CoverLoader {
                 ? 'Tap to rate'
                 : '${_userRating!} / 5',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey,
-                ),
+              color: Colors.grey,
+            ),
           ),
 
         const SizedBox(height: 16),
@@ -151,18 +155,18 @@ class _BookDetailsPageState extends State<BookDetailsPage> with CoverLoader {
               const SizedBox(width: 6),
               _loadingRating
                   ? const SizedBox(
-                      width: 60,
-                      height: 14,
-                      child: LinearProgressIndicator(),
-                    )
+                width: 60,
+                height: 14,
+                child: LinearProgressIndicator(),
+              )
                   : Text(
-                      _avgRating == null
-                          ? 'No ratings yet'
-                          : 'Community: ${_avgRating!.toStringAsFixed(1)} / 5',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
+                _avgRating == null
+                    ? 'No ratings yet'
+                    : 'Community: ${_avgRating!.toStringAsFixed(1)} / 5',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
         ),
@@ -210,14 +214,13 @@ class _BookDetailsPageState extends State<BookDetailsPage> with CoverLoader {
                                 child: Center(
                                   child: Text('No cover',
                                       style:
-                                          TextStyle(color: Colors.white)),
+                                      TextStyle(color: Colors.white)),
                                 ),
                               );
                             }
                             return ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              // child: Image.memory(cover, fit: BoxFit.cover),
-                              child: Image.asset("assets/book_covers/${widget.title.substring(0, widget.title.length - 5)}.jpg")
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.asset("assets/book_covers/${widget.title.substring(0, widget.title.length - 5)}.jpg")
                             );
                           },
                         ),
@@ -233,40 +236,93 @@ class _BookDetailsPageState extends State<BookDetailsPage> with CoverLoader {
             // ── Star rating section ───────────────────────────────────────
             _starRatingSection(),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
 
-            // ── Checkout button ───────────────────────────────────────────
-            TextButton(
-              onPressed: () async {
-                final email = await AuthService.getEmail();
-                final db = FirebaseDB.getReference();
-                final checkoutID =
-                    await db.checkOutBook(email!, widget.title);
-                if (!context.mounted) return;
-                if (checkoutID == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('$displayTitle is unavailable right now.'),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
+            // ── Our AI Summary Section ────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.auto_awesome, size: 20, color: Color(0xFF3949AB)),
+                      const SizedBox(width: 8),
+                      Text(
+                        "AI Summary",
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    widget.summary,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      height: 1.6,
+                      color: Colors.grey.shade600,
                     ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content:
-                          Text('Successfully checked out $displayTitle'),
-                      backgroundColor: Colors.green,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-                if (!context.mounted) return;
-                context.read<BasketContentManager>().reload();
-              },
-              child: Text('Checkout $displayTitle'),
+                  ),
+                ],
+              ),
             ),
 
+            const SizedBox(height: 30),
+
+            // ── Colleague's Availability / Checkout button ────────────────
+            widget.availableOn != null ?
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.red)
+              ),
+              child: Text(
+                'Available on: ${widget.availableOn}',
+                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+            ) :
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                  color: Colors.black12.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.black12)
+              ),
+              child: TextButton(
+                onPressed: () async {
+                  final email = await AuthService.getEmail();
+                  final db = FirebaseDB.getReference();
+                  final checkoutID =
+                  await db.checkOutBook(email!, widget.title);
+                  if (!context.mounted) return;
+                  if (checkoutID == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('$displayTitle is unavailable right now.'),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content:
+                        Text('Successfully checked out $displayTitle'),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                  if (!context.mounted) return;
+                  context.read<BasketContentManager>().reload();
+                },
+                child: Text('Checkout $displayTitle'),
+              ),
+            ),
             const SizedBox(height: 30),
           ],
         ),

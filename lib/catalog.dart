@@ -4,8 +4,10 @@ import 'animations/staggered_in.dart';
 import 'animations/book_details_page.dart';
 import 'animations/book_card.dart';
 import 'ereader/cover_loader.dart';
-// import 'database/db.dart';
 import 'firebase_database/firebase_db.dart';
+
+// NEW: Ensure you import your summary service here!
+import 'summary_service.dart';
 
 class Catalog extends StatefulWidget {
   const Catalog({super.key});
@@ -16,18 +18,6 @@ class Catalog extends StatefulWidget {
 
 class CatalogState extends State<Catalog> with CoverLoader{
   late Future<List<String>> _items;
-  // [
-  //   "The Gunslinger.epub",
-  //   "It Ends With Us.epub",
-  //   "Camp X.epub",
-  //   "Fantastic 4 Rise of the Silver Surfer.epub",
-  //   "My Baby Mama Is A Loser.epub",
-  //   "Cruel Mate.epub",
-  //   "Twelve Angry Men.epub",
-  //   "An Omega For Dylan.epub",
-  //   "Under The Dome.epub",
-  //   "Sisters.epub",
-  // ];
 
   @override
   void initState() {
@@ -35,21 +25,29 @@ class CatalogState extends State<Catalog> with CoverLoader{
     getBookFileNames();
   }
 
-  // This needs to be called outside of initState because initState cannot be an async method itself
   Future<void> getBookFileNames() async {
-    // DB db = await DB.getReference();
     FirebaseDB db = FirebaseDB.getReference();
     _items = db.getBookFileNames();
     setState(() {});
   }
 
-  void _openDetails(String title, Color color, String heroTag) {
+  // CHANGED: Merged both async summary fetching and availableOn fetching
+  void _openDetails(String title, Color color, String heroTag, String? availableOn) async {
+    String cleanTitle = title.replaceAll(".epub", "");
+
+    // Instantly fetch from Firestore (will use local cache if offline)
+    String? summary = await FirebaseDB.getReference().getBookSummary(cleanTitle);
+
+    if (!mounted) return;
+
     Navigator.of(context).push(
       AppPageRoute(
         builder: (_) => BookDetailsPage(
           title: title,
           color: color,
           heroTag: heroTag,
+          availableOn: availableOn, // Colleague's expiration logic
+          summary: summary ?? "No AI summary available. Tap the magic wand icon in the catalog to generate one!", // Our AI logic
         ),
       ),
     );
@@ -141,6 +139,15 @@ class CatalogState extends State<Catalog> with CoverLoader{
                     fontWeight: FontWeight.w400,
                   ),
                 ),
+                SizedBox(height: 6),
+                Text(
+                  'Hint: Missing a summary? Just tap there! -->',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
               ],
             ),
           ),
@@ -154,6 +161,42 @@ class CatalogState extends State<Catalog> with CoverLoader{
                 Icons.auto_stories_rounded,
                 size: 54,
                 color: Colors.white.withOpacity(0.18),
+              ),
+            ),
+          ),
+
+          // NEW: The AI Sync Button added directly to the catalog banner
+          Positioned(
+            right: 8,
+            bottom: 8,
+            child: Material(
+              color: Colors.transparent,
+              child: IconButton(
+                icon: const Icon(Icons.auto_awesome, color: Colors.white),
+                tooltip: "Sync AI Summaries",
+                onPressed: () async {
+                  List<String>? currentBooks = await _items;
+
+                  if (currentBooks != null && currentBooks.isNotEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Starting AI Sync in the background...")),
+                    );
+
+                    for (var fileName in currentBooks) {
+                      await SummaryService.processBookSummary(fileName);
+                    }
+
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("AI Sync Complete!")),
+                      );
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("No books found to sync.")),
+                    );
+                  }
+                },
               ),
             ),
           ),
@@ -176,13 +219,11 @@ class CatalogState extends State<Catalog> with CoverLoader{
       height: height,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        // itemCount: bookFileNames == null ? 5 : bookFileNames.length,
         itemCount: 5,
         padding: const EdgeInsets.fromLTRB(10.0, 0.0, 10.0, 5.0),
         itemBuilder: (context, index) {
           final title = bookFileNames == null ? "" : bookFileNames[index];
           final heroTag = "$prefix-$index";
-          // final heroTag = _items[index];
 
           final cover = loadEpubCover(title);
 
@@ -190,15 +231,15 @@ class CatalogState extends State<Catalog> with CoverLoader{
             padding: const EdgeInsets.symmetric(horizontal: 10.0),
             child: SizedBox(
               width: width,
-                child: BookCard(
+              child: BookCard(
                   title: title,
                   color: color,
                   heroTag: heroTag,
-                  onTap: () => _openDetails(title, color, heroTag),
-                  // coverPath: cover,
+                  // Merged the async onTap to fetch the checkout expiration date!
+                  onTap: () async => _openDetails(title, color, heroTag, await FirebaseDB.getReference().getBookCheckoutExpiration(title)),
                   coverPath: bookFileNames == null ? "" : bookFileNames[index].length < 5 ? "" : "assets/book_covers/${bookFileNames[index].substring(0, bookFileNames[index].length - 5)}.jpg"
-                ),
               ),
+            ),
           );
         },
       ),
@@ -208,86 +249,80 @@ class CatalogState extends State<Catalog> with CoverLoader{
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-        child: Column(
-          children: [
-            _heroBanner(),
-            _sectionTitle("This Week's Featured"),
-            FutureBuilder(
-              future: _items,
-              builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
-                List<String>? listElements;
-                // Displays while the system is waiting for a response from the database
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  listElements = ["","","","",""];
-                } else if (snapshot.hasData) {
-                  listElements = snapshot.data;
-                } else {
-                  return Text("Failed to load books");
-                }
-                return _horizontalRow(
-                    prefix: "Featured Title",
-                    count: 10,
-                    height: 270,
-                    width: 180,
-                    // color: const Color.fromARGB(255, 0, 100, 255),
-                    color: const Color.fromARGB(10, 0, 0, 0),
-                    bookFileNames: listElements
-                );
-              },
-            ),
-            const Divider(height: 20, thickness: 2, indent: 20, endIndent: 20),
-            _sectionTitle("Recommended For You"),
-            FutureBuilder(
-              future: _items,
-              builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
-                List<String>? listElements;
-                // Displays while the system is waiting for a response from the database
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  listElements = ["","","","",""];
-                } else if (snapshot.hasData) {
-                  listElements = snapshot.data;
-                } else {
-                  return Text("Failed to load books");
-                }
-                return _horizontalRow(
+      child: Column(
+        children: [
+          _heroBanner(),
+          _sectionTitle("This Week's Featured"),
+          FutureBuilder(
+            future: _items,
+            builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
+              List<String>? listElements;
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                listElements = ["","","","",""];
+              } else if (snapshot.hasData) {
+                listElements = snapshot.data;
+              } else {
+                return const Text("Failed to load books");
+              }
+              return _horizontalRow(
+                  prefix: "Featured Title",
+                  count: 10,
+                  height: 270,
+                  width: 180,
+                  color: const Color.fromARGB(10, 0, 0, 0),
+                  bookFileNames: listElements
+              );
+            },
+          ),
+          const Divider(height: 20, thickness: 2, indent: 20, endIndent: 20),
+          _sectionTitle("Recommended For You"),
+          FutureBuilder(
+            future: _items,
+            builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
+              List<String>? listElements;
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                listElements = ["","","","",""];
+              } else if (snapshot.hasData) {
+                listElements = snapshot.data;
+              } else {
+                return const Text("Failed to load books");
+              }
+              return _horizontalRow(
                   prefix: "Recommended Title",
                   count: 10,
                   height: 180,
                   width: 120,
-                  // color: const Color.fromARGB(255, 138, 101, 236),
                   color: const Color.fromARGB(10, 0, 0, 0),
                   bookFileNames: listElements
-                );
-              },
-            ),
-            const Divider(height: 20, thickness: 2, indent: 20, endIndent: 20),
-            _sectionTitle("Critically Acclaimed"),
-            FutureBuilder(
-              future: _items,
-              builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
-                List<String>? listElements;
-                // Displays while the system is waiting for a response from the database
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  listElements = ["","","","",""];
-                } else if (snapshot.hasData) {
-                  listElements = snapshot.data;
-                } else {
-                  return Text("Failed to load books");
-                }
-                return _horizontalRow(
+              );
+            },
+          ),
+          const Divider(height: 20, thickness: 2, indent: 20, endIndent: 20),
+          _sectionTitle("Critically Acclaimed"),
+          FutureBuilder(
+            future: _items,
+            builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
+              List<String>? listElements;
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                listElements = ["","","","",""];
+              } else if (snapshot.hasData) {
+                listElements = snapshot.data;
+              } else {
+                return const Text("Failed to load books");
+              }
+              return _horizontalRow(
                   prefix: "Acclaimed Title",
                   count: 10,
                   height: 180,
                   width: 120,
-                  // color: const Color.fromARGB(255, 143, 239, 111),
                   color: const Color.fromARGB(10, 0, 0, 0),
                   bookFileNames: listElements
-                );
-              },
-            ),
-            const SizedBox(height: 75),
-          ],
-        ),
+              );
+            },
+          ),
+          const SizedBox(height: 75),
+        ],
+      ),
     );
   }
 }

@@ -156,14 +156,32 @@ class _SearchState extends State<Search> {
         color: Theme.of(context).cardColor,
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
-          onTap: () {
+          onTap: () async {
             final heroTag = 'search-$fileName';
+
+            // 1. Clean the title to match how it's saved in the database
+            String cleanTitle = fileName.replaceAll(".epub", "");
+
+            // 2. Fetch both the AI summary and the availability date simultaneously
+            final results = await Future.wait([
+              FirebaseDB.getReference().getBookSummary(cleanTitle),
+              FirebaseDB.getReference().getBookCheckoutExpiration(fileName),
+            ]);
+
+            String? summary = results[0];
+            String? availableOn = results[1];
+
+            // 3. Ensure the widget is still on screen before navigating
+            if (!mounted) return;
+
             Navigator.of(context).push(
               AppPageRoute(
                 builder: (_) => BookDetailsPage(
                   title: fileName,
                   color: const Color.fromARGB(10, 0, 0, 0),
                   heroTag: heroTag,
+                  availableOn: availableOn, // <-- Colleague's feature added!
+                  summary: summary ?? "No AI summary available. Tap the magic wand icon in the catalog to generate one!",
                 ),
               ),
             );
