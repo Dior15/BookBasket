@@ -64,19 +64,31 @@ extension Books on FirebaseDB {
   /// Borrow status is read from the books collection's [isBorrowed] field,
   /// which is kept in sync by the checkout/checkin transactions.
   Future<List<Map<String, dynamic>>> getBooksByTitle(String title) async {
-    // Fetch matching books via prefix search on the lowercase title field.
+    final String normalizedQuery = title.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) return [];
+
+    // Fetch books in title order, then apply local substring matching.
+    // Firestore supports prefix filtering, but not full "contains" matching.
     final QuerySnapshot<Map<String, dynamic>> booksQuery =
         await FirebaseDB._database
             .collection("books")
-            .where("titleLower", isGreaterThanOrEqualTo: title.toLowerCase())
-            .where("titleLower", isLessThan: '${title.toLowerCase()}z')
             .orderBy("titleLower")
             .get();
 
-    if (booksQuery.docs.isEmpty) return [];
+    final matchedDocs = booksQuery.docs.where((doc) {
+      final data = doc.data();
+      final titleValue = (data["title"] ?? "").toString().toLowerCase();
+      final authorValue = (data["author"] ?? "").toString().toLowerCase();
+      final fileNameValue = (data["fileName"] ?? "").toString().toLowerCase();
+      return titleValue.contains(normalizedQuery) ||
+          authorValue.contains(normalizedQuery) ||
+          fileNameValue.contains(normalizedQuery);
+    }).toList();
+
+    if (matchedDocs.isEmpty) return [];
 
     // Collect all matched fileNames so we can cross-check bookCheckout.
-    final List<String> fileNames = booksQuery.docs
+    final List<String> fileNames = matchedDocs
         .map((d) => d.data()["fileName"].toString())
         .toList();
 
@@ -98,7 +110,7 @@ extension Books on FirebaseDB {
 
     // Build result list, using the checkout set as the authoritative source
     // for borrow status (mirrors what the books.isBorrowed field should show).
-    return booksQuery.docs.map((doc) {
+    return matchedDocs.map((doc) {
       final data = doc.data();
       final String fileName = data["fileName"]?.toString() ?? "";
       return <String, dynamic>{
