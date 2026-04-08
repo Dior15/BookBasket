@@ -511,7 +511,7 @@ class _SearchState extends State<Search> {
                             },
                           ),
                     filled: true,
-                    fillColor: Theme.of(context).scaffoldBackgroundColor,
+                    fillColor: Colors.white,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 14,
