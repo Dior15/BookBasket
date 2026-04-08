@@ -18,190 +18,229 @@ class MapPage extends StatefulWidget {
 class _MapPageState extends State<MapPage> {
   List<ReadingMarker> _markers = [];
   LatLng? _currentPosition;
+  String? _currentUserEmail;
 
   final MapController _mapController = MapController();
-
-  // NEW: A subscription to keep our stream open
-  StreamSubscription<List<ReadingMarker>>? _markerSubscription;
+  final List<StreamSubscription<List<ReadingMarker>>> _markerSubscriptions = [];
 
   @override
   void initState() {
     super.initState();
     _getCurrentLocation();
-    _listenToMarkers(); // NEW: Start the stream
+    _listenToCommunalMarkers();
   }
 
   @override
   void dispose() {
-    // NEW: Always close the valve when you leave the page!
-    _markerSubscription?.cancel();
+    for (var sub in _markerSubscriptions) {
+      sub.cancel();
+    }
     _mapController.dispose();
     super.dispose();
   }
 
-  // --- NEW: The Live Stream Listener ---
-  Future<void> _listenToMarkers() async {
-    try {
-      final email = await AuthService.getEmail() ?? AuthService.userEmail;
-      final db = FirebaseDB.getReference();
-
-      // We subscribe to the stream. Every time the cloud data changes,
-      // this block of code will automatically run and update the UI.
-      _markerSubscription = db.getUserMarkersStream(email).listen((cloudMarkers) {
-        if (mounted) {
-          setState(() {
-            _markers = cloudMarkers;
-          });
-        }
-      });
-    } catch (e) {
-      debugPrint("Error listening to marker stream: $e");
-    }
-  }
-
   Future<void> _getCurrentLocation() async {
-    try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        if (mounted) setState(() => _currentPosition = const LatLng(43.8971, -78.9429));
-        return;
-      }
+    bool serviceEnabled;
+    LocationPermission permission;
 
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
 
-      if (mounted) {
-        setState(() {
-          _currentPosition = LatLng(position.latitude, position.longitude);
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _currentPosition = const LatLng(43.8971, -78.9429));
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
     }
+    if (permission == LocationPermission.deniedForever) return;
+
+    Position position = await Geolocator.getCurrentPosition();
+    if (!mounted) return;
+    setState(() {
+      _currentPosition = LatLng(position.latitude, position.longitude);
+    });
+
+    _mapController.move(_currentPosition!, 13.0);
   }
 
-  // --- UPDATED: Delete marker ---
-  Future<void> _deleteMarker(int index) async {
-    final markerToDelete = _markers[index];
-
+  Future<void> _listenToCommunalMarkers() async {
     try {
-      final email = await AuthService.getEmail() ?? AuthService.userEmail;
+      _currentUserEmail = await AuthService.getEmail() ?? AuthService.userEmail;
+      if (_currentUserEmail == null) return;
+
       final db = FirebaseDB.getReference();
+      List<String> friends = await db.getFriendEmails(_currentUserEmail!);
+      List<String> communalNetwork = [_currentUserEmail!, ...friends];
 
-      // All we have to do is tell Firebase to delete it.
-      await db.deleteUserMarker(email, markerToDelete);
-
-      // NOTE: We don't even need to call setState to remove it from the list!
-      // Because we are using a Stream, Firebase will instantly notice the deletion
-      // and push the new, updated list back down our _markerSubscription pipe!
+      for (String user in communalNetwork) {
+        var sub = db.getUserMarkersStream(user).listen((userMarkers) {
+          if (!mounted) return;
+          setState(() {
+            _markers.removeWhere((m) => m.username == user);
+            _markers.addAll(userMarkers);
+          });
+        });
+        _markerSubscriptions.add(sub);
+      }
     } catch (e) {
-      debugPrint("Error deleting cloud marker: $e");
+      debugPrint("Error initializing communal markers: $e");
     }
   }
 
+  // --- NEW: Method to show the list of markers ---
+  void _showMarkerList() {
+    // 1. Separate the lists
+    final myMarkers = _markers.where((m) => m.username == _currentUserEmail).toList();
+    final friendMarkers = _markers.where((m) => m.username != _currentUserEmail).toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.5,
+          maxChildSize: 0.9,
+          minChildSize: 0.3,
+          builder: (context, scrollController) {
+            return ListView(
+              controller: scrollController,
+              children: [
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12.0),
+                  child: Center(
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey,
+                        borderRadius: BorderRadius.all(Radius.circular(10)),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // --- User's Markers ---
+                if (myMarkers.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: Text("Your Reading Spots", style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                  ),
+                  ...myMarkers.map((m) => _buildMarkerTile(m, true)),
+                  const Divider(),
+                ],
+
+                // --- Friends' Markers ---
+                if (friendMarkers.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: Text("Friends' Reading Spots", style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                  ),
+                  ...friendMarkers.map((m) => _buildMarkerTile(m, false)),
+                ],
+
+                // --- Empty State ---
+                if (myMarkers.isEmpty && friendMarkers.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Center(
+                      child: Text("No markers found yet! Start reading to add some.", textAlign: TextAlign.center),
+                    ),
+                  )
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // --- NEW: Helper to build the list tiles ---
+// --- NEW: Helper to build the list tiles ---
+  Widget _buildMarkerTile(ReadingMarker marker, bool isMine) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: (isMine ? Colors.redAccent : Colors.deepPurple).withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(Icons.location_on, color: isMine ? Colors.redAccent : Colors.deepPurple),
+      ),
+      title: Text(isMine ? "You read here" : "${marker.username} read here", style: const TextStyle(fontWeight: FontWeight.w600)),
+      subtitle: Text(marker.bookTitles.join(", "), maxLines: 2, overflow: TextOverflow.ellipsis),
+
+      // CHANGED: Show a delete button for the user's markers, and the chevron for friends
+      trailing: isMine
+          ? IconButton(
+        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+        onPressed: () async {
+          // 1. Close the bottom sheet immediately for a snappy UI
+          Navigator.pop(context);
+
+          // 2. Call your existing Firebase logic to delete the marker
+          await FirebaseDB.getReference().deleteUserMarker(_currentUserEmail!, marker);
+
+          // 3. Let the user know it was successful (The map stream will auto-remove the marker icon!)
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Reading spot removed.")),
+            );
+          }
+        },
+      )
+          : const Icon(Icons.chevron_right, color: Colors.grey),
+
+      onTap: () {
+        // Close the bottom sheet and pan to the marker
+        Navigator.pop(context);
+        _mapController.move(LatLng(marker.latitude, marker.longitude), 15.0);
+      },
+    );
+  }
   @override
   Widget build(BuildContext context) {
-    if (_currentPosition == null) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Reading Map",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      extendBodyBehindAppBar: true,
-
-      endDrawer: Drawer(
-        child: SafeArea(
-          child: Column(
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text(
-                  "My Markers",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const Divider(),
-              Expanded(
-                child: _markers.isEmpty
-                    ? const Center(child: Text("No markers yet."))
-                    : ListView.builder(
-                  itemCount: _markers.length,
-                  itemBuilder: (context, index) {
-                    final marker = _markers[index];
-
-                    String displayTitle = marker.bookTitles.isNotEmpty
-                        ? marker.bookTitles.first
-                        : "Unknown Book";
-
-                    if (marker.bookTitles.length > 1) {
-                      displayTitle += " (+${marker.bookTitles.length - 1})";
-                    }
-
-                    return ListTile(
-                      leading: const Icon(Icons.location_on, color: Colors.redAccent),
-                      title: Text(
-                        "Marker ${index + 1}",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        "Lat: ${marker.latitude.toStringAsFixed(4)}\nLng: ${marker.longitude.toStringAsFixed(4)}",
-                      ),
-                      isThreeLine: true,
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
-                        onPressed: () => _deleteMarker(index),
-                      ),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _mapController.move(
-                            LatLng(marker.latitude, marker.longitude),
-                            16.0
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
+        title: const Text("Communal Map"),
+        actions: [
+          // NEW: The AppBar button to open the list
+          IconButton(
+            icon: const Icon(Icons.place),
+            tooltip: 'View Marker List',
+            onPressed: _showMarkerList,
           ),
-        ),
+        ],
       ),
-      body: FlutterMap(
+      body: _currentPosition == null
+          ? const Center(child: CircularProgressIndicator())
+          : FlutterMap(
         mapController: _mapController,
         options: MapOptions(
           initialCenter: _currentPosition!,
-          initialZoom: 16.0,
+          initialZoom: 13.0,
         ),
         children: [
           TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
             userAgentPackageName: 'com.example.bookbasket',
           ),
           MarkerLayer(
             markers: _markers.map((marker) {
+              bool isMyMarker = marker.username == _currentUserEmail;
+
               return Marker(
                 point: LatLng(marker.latitude, marker.longitude),
-                width: 45,
-                height: 45,
+                width: 60,
+                height: 60,
                 child: GestureDetector(
                   onTap: () {
                     showDialog(
                       context: context,
                       builder: (_) => AlertDialog(
-                        title: const Text("Books read here:"),
+                        title: Text(isMyMarker ? "You read here:" : "${marker.username} read here:"),
                         content: SizedBox(
                           width: double.maxFinite,
                           child: ListView.builder(
@@ -226,9 +265,9 @@ class _MapPageState extends State<MapPage> {
                       ),
                     );
                   },
-                  child: const Icon(
+                  child: Icon(
                     Icons.location_on,
-                    color: Colors.redAccent,
+                    color: isMyMarker ? Colors.redAccent : Colors.deepPurple,
                     size: 45,
                   ),
                 ),

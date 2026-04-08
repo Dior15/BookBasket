@@ -259,4 +259,16 @@ extension Friends on FirebaseDB {
       );
     });
   }
+
+  /// NEW: Easily fetch a list of friend emails for the communal map
+  Future<List<String>> getFriendEmails(String currentUserEmail) async {
+    final current = currentUserEmail.trim().toLowerCase();
+    final doc = await _friendDocByUsername(current);
+
+    if (doc == null) return [];
+
+    final data = _friendDocToMap(doc);
+    return data["friends"] as List<String>;
+  }
+
 }

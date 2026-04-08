@@ -1,12 +1,14 @@
 import 'dart:convert';
 
 class ReadingMarker {
-  final List<String> bookTitles; // NOW A LIST!
+  final String username; // NEW: Track who owns the marker
+  final List<String> bookTitles;
   final double latitude;
   final double longitude;
   final DateTime timestamp;
 
   ReadingMarker({
+    this.username = "Unknown User", // Safe default for old existing markers
     required this.bookTitles,
     required this.latitude,
     required this.longitude,
@@ -15,6 +17,7 @@ class ReadingMarker {
 
   Map<String, dynamic> toMap() {
     return {
+      'username': username,
       'bookTitles': bookTitles,
       'latitude': latitude,
       'longitude': longitude,
@@ -32,6 +35,7 @@ class ReadingMarker {
     }
 
     return ReadingMarker(
+      username: map['username'] ?? 'Unknown User', // Grabs the username injected by Firebase!
       bookTitles: titles,
       latitude: map['latitude']?.toDouble() ?? 0.0,
       longitude: map['longitude']?.toDouble() ?? 0.0,
@@ -41,6 +45,5 @@ class ReadingMarker {
 
   String toJson() => json.encode(toMap());
 
-  factory ReadingMarker.fromJson(String source) =>
-      ReadingMarker.fromMap(json.decode(source));
+  factory ReadingMarker.fromJson(String source) => ReadingMarker.fromMap(json.decode(source));
 }
