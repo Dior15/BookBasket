@@ -16,6 +16,7 @@ ThemeData buildBookBasketTheme(Brightness brightness) {
   );
 
   return ThemeData(
+    fontFamily: 'Times New Roman',
     useMaterial3: true,
     brightness: brightness,
     colorScheme: colorScheme,
@@ -29,6 +30,7 @@ ThemeData buildBookBasketTheme(Brightness brightness) {
       centerTitle: false,
       iconTheme: IconThemeData(color: colorScheme.onSurface),
       titleTextStyle: TextStyle(
+        fontFamily: 'Times New Roman',
         color: colorScheme.onSurface, // Explicitly colors the title text
         fontSize: 20,
         fontWeight: FontWeight.w700,
@@ -74,6 +76,7 @@ ThemeData buildAdvancedTheme(Color bg, Color fg) {
       elevation: 0,
       iconTheme: IconThemeData(color: fg), // Forces back buttons and menu icons to match
       titleTextStyle: TextStyle(
+        fontFamily: 'Times New Roman',
         color: fg, // Explicitly colors the title text
         fontSize: 20,
         fontWeight: FontWeight.w700,
@@ -85,8 +88,8 @@ ThemeData buildAdvancedTheme(Color bg, Color fg) {
     textTheme: baseTextTheme.apply(
       bodyColor: fg,
       displayColor: fg,
+      fontFamily: 'Times New Roman',
     ),
-
     // Icons
     iconTheme: IconThemeData(color: fg),
     primaryIconTheme: IconThemeData(color: fg),
