@@ -247,7 +247,7 @@ class BasketState extends State<Basket> {
                                             title: title,
                                             color: cardColor,
                                             heroTag: heroTag,
-                                            summary: summary ?? "No AI summary available. Tap the magic wand icon in the catalog to generate one!",
+                                            summary: summary ?? "No AI summary available yet. Tap refresh in this details page to generate one!",
                                           ),
                                         ),
                                       );

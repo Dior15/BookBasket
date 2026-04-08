@@ -6,9 +6,6 @@ import 'animations/book_card.dart';
 import 'ereader/cover_loader.dart';
 import 'firebase_database/firebase_db.dart';
 
-// NEW: Ensure you import your summary service here!
-import 'summary_service.dart';
-
 class Catalog extends StatefulWidget {
   const Catalog({super.key});
 
@@ -47,7 +44,7 @@ class CatalogState extends State<Catalog> with CoverLoader{
           color: color,
           heroTag: heroTag,
           availableOn: availableOn, // Colleague's expiration logic
-          summary: summary ?? "No AI summary available. Tap the magic wand icon in the catalog to generate one!", // Our AI logic
+          summary: summary ?? "No AI summary available yet. Tap refresh in this details page to generate one!", // Our AI logic
         ),
       ),
     );
@@ -139,15 +136,6 @@ class CatalogState extends State<Catalog> with CoverLoader{
                     fontWeight: FontWeight.w400,
                   ),
                 ),
-                SizedBox(height: 6),
-                Text(
-                  'Hint: Missing a summary? Just tap there! -->',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
               ],
             ),
           ),
@@ -161,42 +149,6 @@ class CatalogState extends State<Catalog> with CoverLoader{
                 Icons.auto_stories_rounded,
                 size: 54,
                 color: Colors.white.withOpacity(0.18),
-              ),
-            ),
-          ),
-
-          // NEW: The AI Sync Button added directly to the catalog banner
-          Positioned(
-            right: 8,
-            bottom: 8,
-            child: Material(
-              color: Colors.transparent,
-              child: IconButton(
-                icon: const Icon(Icons.auto_awesome, color: Colors.white),
-                tooltip: "Sync AI Summaries",
-                onPressed: () async {
-                  List<String>? currentBooks = await _items;
-
-                  if (currentBooks != null && currentBooks.isNotEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Starting AI Sync in the background...")),
-                    );
-
-                    for (var fileName in currentBooks) {
-                      await SummaryService.processBookSummary(fileName);
-                    }
-
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("AI Sync Complete!")),
-                      );
-                    }
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("No books found to sync.")),
-                    );
-                  }
-                },
               ),
             ),
           ),

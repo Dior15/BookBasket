@@ -174,7 +174,7 @@ class _SearchState extends State<Search> {
                   color: const Color.fromARGB(10, 0, 0, 0),
                   heroTag: heroTag,
                   availableOn: availableOn, // <-- Colleague's feature added!
-                  summary: summary ?? "No AI summary available. Tap the magic wand icon in the catalog to generate one!",
+                  summary: summary ?? "No AI summary available yet. Tap refresh in this details page to generate one!",
                 ),
               ),
             );
