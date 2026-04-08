@@ -32,6 +32,8 @@ class AdminPage extends StatelessWidget {
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
                     fontSize: 20,
+                    fontFamily: 'Times New Roman',
+
                   ),
                 ),
                 SizedBox(height: 4),

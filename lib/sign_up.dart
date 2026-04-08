@@ -116,6 +116,7 @@ class _SignUpPageState extends State<SignUpPage> {
                               'Sign Up',
                               style: Theme.of(context).textTheme.titleLarge,
                               textAlign: TextAlign.center,
+
                             ),
                             const SizedBox(height: 12),
 

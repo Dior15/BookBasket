@@ -72,6 +72,7 @@ class BasketState extends State<Basket> {
                     color: Colors.white,
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
+                    fontFamily: 'Times New Roman',
                   ),
                 ),
                 const SizedBox(height: 4),
