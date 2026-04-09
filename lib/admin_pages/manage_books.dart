@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:file_selector/file_selector.dart';
 
 import '../basket.dart';
-import '../database/db.dart';
+import '../firebase_database/firebase_db.dart';
 
 class Book {
   String title;
@@ -105,7 +105,8 @@ class _ManageBooksState extends State<ManageBooks> {
               }
 
               if (book == null) {
-                DB db = await DB.getReference();
+                // DB db = await DB.getReference();
+                FirebaseDB db = FirebaseDB.getReference();
                 db.addNewBook(
                   titleController.text,
                   authorController.text,
@@ -157,7 +158,8 @@ class _ManageBooksState extends State<ManageBooks> {
   void getBooks() async {
     BookStore.books = [];
 
-    DB db = await DB.getReference();
+    // DB db = await DB.getReference();
+    FirebaseDB db = FirebaseDB.getReference();
     List<Map<String, Object?>> books = await db.getBooks();
 
     for (Map<String, Object?> book in books) {
