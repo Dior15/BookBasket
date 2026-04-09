@@ -26,3 +26,12 @@ Once you've started reading books in BookBasket, you'll start leaving a trail of
 As an administrator, you can manage the books members of your library have checked out. You can also manage members and modify or remove their accounts as needed. 
 
 ![img_7.png](readme_images/img_7.png) &nbsp; ![img_8.png](readme_images/img_8.png)
+
+## More About This BookBasket
+BookBasket was developed for the winter 2026 session of the "Advanced Mobile Development" course at Ontario Tech University by:
+
+- Nathaniel Dizon [HTTime39](https://github.com/HTTime39)
+- Naufil Ansari [naufilansari05](https://github.com/naufilansari05)
+- Khristian Diorico [Dior15](https://github.com/Dior15)
+- Jugal Patel [Jugal19](https://github.com/Jugal19)
+- Anthony Ciceu [MinzoneMC](https://github.com/MinezoneMC)
