@@ -7,7 +7,7 @@ import 'firebase_database/firebase_db.dart';
 // ── Enums for filter & sort ──────────────────────────────────────────────────
 enum AvailabilityFilter { all, available, borrowed }
 
-enum SortOption { titleAZ, titleZA, authorAZ, authorZA }
+enum SortOption { titleAZ, titleZA }
 
 // ── Widget ───────────────────────────────────────────────────────────────────
 class Search extends StatefulWidget {
@@ -111,12 +111,6 @@ class _SearchState extends State<Search> {
       case SortOption.titleZA:
         list.sort((a, b) => _str(b, 'title').compareTo(_str(a, 'title')));
         break;
-      case SortOption.authorAZ:
-        list.sort((a, b) => _str(a, 'author').compareTo(_str(b, 'author')));
-        break;
-      case SortOption.authorZA:
-        list.sort((a, b) => _str(b, 'author').compareTo(_str(a, 'author')));
-        break;
     }
     return list;
   }
@@ -144,7 +138,6 @@ class _SearchState extends State<Search> {
 
   Widget _buildResultItem(Map<String, Object?> book, int index) {
     final title = book['title']?.toString() ?? '(unknown)';
-    final author = book['author']?.toString() ?? '';
     final fileName = book['fileName']?.toString() ?? '';
     final accent = _accentColors[index % _accentColors.length];
 
@@ -181,7 +174,7 @@ class _SearchState extends State<Search> {
                   color: const Color.fromARGB(10, 0, 0, 0),
                   heroTag: heroTag,
                   availableOn: availableOn, // <-- Colleague's feature added!
-                  summary: summary ?? "No AI summary available. Tap the magic wand icon in the catalog to generate one!",
+                  summary: summary ?? "No AI summary available yet. Tap refresh in this details page to generate one!",
                 ),
               ),
             );
@@ -232,16 +225,6 @@ class _SearchState extends State<Search> {
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 15,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        author.isNotEmpty ? author : 'Unknown author',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade500,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -397,8 +380,6 @@ class _SearchState extends State<Search> {
       itemBuilder: (_) => const [
         PopupMenuItem(value: SortOption.titleAZ, child: Text('Title A → Z')),
         PopupMenuItem(value: SortOption.titleZA, child: Text('Title Z → A')),
-        PopupMenuItem(value: SortOption.authorAZ, child: Text('Author A → Z')),
-        PopupMenuItem(value: SortOption.authorZA, child: Text('Author Z → A')),
       ],
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -431,10 +412,6 @@ class _SearchState extends State<Search> {
         return 'Title A-Z';
       case SortOption.titleZA:
         return 'Title Z-A';
-      case SortOption.authorAZ:
-        return 'Author A-Z';
-      case SortOption.authorZA:
-        return 'Author Z-A';
     }
   }
 
@@ -487,9 +464,9 @@ class _SearchState extends State<Search> {
                 borderRadius: BorderRadius.circular(14),
                 child: TextField(
                   controller: _searchCtrl,
-                  style: const TextStyle(fontSize: 15),
+                  style: const TextStyle(fontSize: 15, color: Colors.black),
                   decoration: InputDecoration(
-                    hintText: 'Title, author, keyword...',
+                    hintText: 'Search...',
                     hintStyle: TextStyle(
                       color: Colors.grey.shade400,
                       fontSize: 14,

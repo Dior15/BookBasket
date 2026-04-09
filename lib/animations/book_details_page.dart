@@ -7,6 +7,7 @@ import '../basket.dart';
 import '../ereader/cover_loader.dart';
 import '../auth_service.dart';
 import '../firebase_database/firebase_db.dart';
+import '../summary_service.dart';
 
 class BookDetailsPage extends StatefulWidget {
   final String title;
@@ -34,12 +35,54 @@ class _BookDetailsPageState extends State<BookDetailsPage> with CoverLoader {
   double? _avgRating;    // null = no ratings at all
   bool _loadingRating = true;
   bool _savingRating = false;
+  bool _refreshingSummary = false;
   String? _username;
+  late String _summaryText;
 
   @override
   void initState() {
     super.initState();
+    _summaryText = widget.summary;
     _loadRatings();
+  }
+
+  Future<void> _refreshSummary() async {
+    if (_refreshingSummary) return;
+
+    setState(() => _refreshingSummary = true);
+
+    try {
+      await SummaryService.processBookSummary(widget.title);
+      final cleanTitle = widget.title.replaceAll('.epub', '');
+      final refreshed = await FirebaseDB.getReference().getBookSummary(cleanTitle);
+
+      if (!mounted) return;
+
+      setState(() {
+        _summaryText = refreshed ?? _summaryText;
+        _refreshingSummary = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            refreshed == null
+                ? 'Summary update ran, but no summary was returned yet.'
+                : 'AI summary updated.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _refreshingSummary = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to update AI summary. Please try again.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _loadRatings() async {
@@ -311,11 +354,23 @@ class _BookDetailsPageState extends State<BookDetailsPage> with CoverLoader {
                           letterSpacing: 0.3,
                         ),
                       ),
+                      const Spacer(),
+                      TextButton.icon(
+                        onPressed: _refreshingSummary ? null : _refreshSummary,
+                        icon: _refreshingSummary
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.refresh_rounded, size: 18),
+                        label: Text(_refreshingSummary ? 'Updating...' : 'Update'),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    widget.summary,
+                    _summaryText,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       height: 1.6,
                       color: Colors.grey.shade600,

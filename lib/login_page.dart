@@ -224,209 +224,247 @@ class _LoginPageState extends State<LoginPage> {
 
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 10),
-
-                  // Hero card
-                  const _HeroCard(
-                    title: 'Welcome to BookBasket',
-                    subtitle: 'Sign in to your digital bookshelf',
-                    icon: Icons.menu_book_rounded,
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Login form card
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'Login',
-                            style: Theme.of(context).textTheme.titleLarge,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 12),
-
-                          if (_errorText != null) ...[
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: cs.error.withValues(alpha: 0.10),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: cs.error.withValues(alpha: 0.35),
-                                ),
-                              ),
-                              child: Text(
-                                _errorText!,
-                                style: TextStyle(
-                                  color: cs.error,
-                                  fontWeight: FontWeight.w700,
-                                ),
+        child: Stack(
+          children: [
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 440),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 10),
+  
+                      // Hero card
+                      const _HeroCard(
+                        title: 'Welcome to BookBasket',
+                        subtitle: 'Sign in to your digital bookshelf',
+                        icon: Icons.menu_book_rounded,
+                      ),
+  
+                      const SizedBox(height: 14),
+  
+                      // Login form card
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                'Login',
+                                style: Theme.of(context).textTheme.titleLarge,
                                 textAlign: TextAlign.center,
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-
-                          Shake(
-                            shakeKey: _shakeKey,
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
-                                children: [
-                                  TextFormField(
-                                    controller: _emailCtrl,
-                                    keyboardType: TextInputType.emailAddress,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Email',
-                                      prefixIcon: Icon(Icons.email_outlined),
-                                    ),
-                                    validator: (v) {
-                                      final value = (v ?? '').trim();
-                                      if (value.isEmpty) {
-                                        return 'Email is required';
-                                      }
-                                      if (!value.contains('@')) {
-                                        return 'Enter a valid email';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 12),
-                                  TextFormField(
-                                    controller: _passwordCtrl,
-                                    obscureText: _hidePassword,
-                                    decoration: InputDecoration(
-                                      labelText: 'Password',
-                                      prefixIcon: const Icon(Icons.lock_outline),
-                                      suffixIcon: IconButton(
-                                        onPressed: () => setState(
-                                              () => _hidePassword = !_hidePassword,
-                                        ),
-                                        icon: Icon(
-                                          _hidePassword
-                                              ? Icons.visibility_outlined
-                                              : Icons.visibility_off_outlined,
-                                        ),
-                                      ),
-                                    ),
-                                    validator: (v) {
-                                      final value = (v ?? '').trim();
-                                      if (value.isEmpty) {
-                                        return 'Password is required';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 16),
-
-                                  // Standard Login Button
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      onPressed: _loading ? null : _handleLogin,
-                                      child: _loading
-                                          ? const SizedBox(
-                                        height: 18,
-                                        width: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                          : const Text('Login'),
+                              const SizedBox(height: 12),
+  
+                              if (_errorText != null) ...[
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: cs.error.withValues(alpha: 0.10),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: cs.error.withValues(alpha: 0.35),
                                     ),
                                   ),
-
-                                  const SizedBox(height: 12),
-
-                                  // Google Sign-In Button
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: OutlinedButton.icon(
-                                      onPressed:
-                                      _loading ? null : _handleGoogleSignIn,
-                                      icon: Image.network(
-                                        'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png',
-                                        height: 20,
-                                      ),
-                                      label: const Text('Sign in with Google'),
-                                      style: OutlinedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 12,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 8),
-
-                                  // Sign Up Button
-                                  TextButton(
-                                    onPressed: _loading
-                                        ? null
-                                        : () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                          const SignUpPage(),
-                                        ),
-                                      );
-                                    },
-                                    child: const Text(
-                                      "Don't have an account? Sign up",
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 14),
-                                  Divider(color: cs.outlineVariant),
-                                  const SizedBox(height: 10),
-
-                                  Text(
-                                    'Demo accounts',
-                                    style: Theme.of(context).textTheme.titleMedium,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Admin: admin@bookbasket.com / admin123\n'
-                                        'User:  user@bookbasket.com / user123',
-                                    textAlign: TextAlign.center,
+                                  child: Text(
+                                    _errorText!,
                                     style: TextStyle(
-                                      color: cs.onSurfaceVariant,
+                                      color: cs.error,
+                                      fontWeight: FontWeight.w700,
                                     ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                ],
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+  
+                              Shake(
+                                shakeKey: _shakeKey,
+                                child: Form(
+                                  key: _formKey,
+                                  child: Column(
+                                    children: [
+                                      TextFormField(
+                                        controller: _emailCtrl,
+                                        keyboardType: TextInputType.emailAddress,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Email',
+                                          prefixIcon: Icon(Icons.email_outlined),
+                                        ),
+                                        validator: (v) {
+                                          final value = (v ?? '').trim();
+                                          if (value.isEmpty) {
+                                            return 'Email is required';
+                                          }
+                                          if (!value.contains('@')) {
+                                            return 'Enter a valid email';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      const SizedBox(height: 12),
+                                      TextFormField(
+                                        controller: _passwordCtrl,
+                                        obscureText: _hidePassword,
+                                        decoration: InputDecoration(
+                                          labelText: 'Password',
+                                          prefixIcon: const Icon(Icons.lock_outline),
+                                          suffixIcon: IconButton(
+                                            onPressed: () => setState(
+                                                  () => _hidePassword = !_hidePassword,
+                                            ),
+                                            icon: Icon(
+                                              _hidePassword
+                                                  ? Icons.visibility_outlined
+                                                  : Icons.visibility_off_outlined,
+                                            ),
+                                          ),
+                                        ),
+                                        validator: (v) {
+                                          final value = (v ?? '').trim();
+                                          if (value.isEmpty) {
+                                            return 'Password is required';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                      const SizedBox(height: 16),
+  
+                                      // Standard Login Button
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton(
+                                          onPressed: _loading ? null : _handleLogin,
+                                          child: _loading
+                                              ? const SizedBox(
+                                            height: 18,
+                                            width: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                              : const Text('Login'),
+                                        ),
+                                      ),
+  
+                                      const SizedBox(height: 12),
+  
+                                      // Google Sign-In Button
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: OutlinedButton.icon(
+                                          onPressed:
+                                          _loading ? null : _handleGoogleSignIn,
+                                          icon: Image.network(
+                                            'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png',
+                                            height: 20,
+                                          ),
+                                          label: const Text('Sign in with Google'),
+                                          style: OutlinedButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+  
+                                      const SizedBox(height: 8),
+  
+                                      // Sign Up Button
+                                      TextButton(
+                                        onPressed: _loading
+                                            ? null
+                                            : () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                              const SignUpPage(),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text(
+                                          "Don't have an account? Sign up",
+                                        ),
+                                      ),
+  
+                                      const SizedBox(height: 14),
+                                      Divider(color: cs.outlineVariant),
+                                      const SizedBox(height: 10),
+  
+                                      Text(
+                                        'Demo accounts',
+                                        style: Theme.of(context).textTheme.titleMedium,
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Admin: admin@bookbasket.com / admin123\n'
+                                            'User:  user@bookbasket.com / user123',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: cs.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+  
+                      const SizedBox(height: 14),
+  
+                      Text(
+                        'Tip: use the demo accounts above to explore the app.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: cs.onSurfaceVariant),
+                      ),
+                    ],
                   ),
-
-                  const SizedBox(height: 14),
-
-                  Text(
-                    'Tip: use the demo accounts above to explore the app.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: cs.onSurfaceVariant),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
+
+            Positioned(
+              top: 8.0,
+              left: 8.0,
+              child: IconButton(
+                icon: const Icon(Icons.help_outline),
+                iconSize: 28,
+                tooltip: 'Help',
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Help & Info'),
+                      content: const Text(
+                          'Forgot your password and need help resetting? Contact:\n\n'
+                              'naufilansari05@gmail.com\n'
+                              'n.s.dizon2005@gmail.com\n\n'
+                              'Hope you get back to your basket soon!'
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Close'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          
+          ],
         ),
       ),
     );
