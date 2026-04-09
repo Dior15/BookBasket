@@ -23,7 +23,9 @@ class EpubParser {
   }) {
     final List<EpubPage> pages = [];
     final double availableWidth = maxWidth - (horizontalPadding * 2);
-    final double targetHeight = maxHeight - (horizontalPadding * 2) - 120; // Accounting for UI
+    // Clamp to a minimum so landscape mode never goes zero/negative
+    final double rawTarget = maxHeight - (horizontalPadding * 2) - 120;
+    final double targetHeight = rawTarget < 50.0 ? 50.0 : rawTarget;
 
     for (int i = 0; i < sections.length; i++) {
       final section = sections[i];
@@ -45,10 +47,22 @@ class EpubParser {
           currentPageHeight += blockHeight + (blockHtml.contains('<h') ? 24 : paragraphSpacing);
         } else {
           final split = _splitBlockToFit(blockHtml, availableWidth, targetHeight - currentPageHeight);
-          if (split.fits.isNotEmpty) currentPageHtml += split.fits;
-          pages.add(EpubPage(html: currentPageHtml, sectionIndex: i));
 
-          if (split.remains.isNotEmpty) blocks.insert(j + 1, split.remains);
+          if (split.fits.isNotEmpty) {
+            // Some text fit — add it and re-queue the remainder
+            currentPageHtml += split.fits;
+            pages.add(EpubPage(html: currentPageHtml, sectionIndex: i));
+            if (split.remains.isNotEmpty) blocks.insert(j + 1, split.remains);
+          } else if (currentPageHeight > 0) {
+            // Nothing fit but current page has content — flush page and retry this block
+            pages.add(EpubPage(html: currentPageHtml, sectionIndex: i));
+            blocks.insert(j + 1, blockHtml);
+          } else {
+            // Nothing fit AND page is empty — force entire block onto its own page
+            // to guarantee forward progress (prevents infinite loop for images, etc.)
+            pages.add(EpubPage(html: blockHtml, sectionIndex: i));
+          }
+
           currentPageHtml = "";
           currentPageHeight = 0;
         }
@@ -136,9 +150,14 @@ class EpubParser {
     double currentHeight = 0;
     int charOffset = 0;
     for (int i = 0; i < lines.length; i++) {
-      if (currentHeight + lines[i].height > remainingHeight) break;
+      if (currentHeight + lines[i].height > remainingHeight && i > 0) break;
       currentHeight += lines[i].height;
       charOffset = tp.getPositionForOffset(Offset(width, currentHeight - (lines[i].height / 2))).offset;
+      // Always fit at least one line to guarantee forward progress
+      if (i == 0 && charOffset == 0 && lines.isNotEmpty) {
+        charOffset = tp.getPositionForOffset(Offset(width, lines[0].height / 2)).offset;
+        if (charOffset == 0 && text.isNotEmpty) charOffset = 1; // absolute minimum: 1 char
+      }
     }
 
     return SplitResult(

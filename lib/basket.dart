@@ -33,7 +33,8 @@ class BasketState extends State<Basket> {
   // This needs to be called outside of initState because initState cannot be an async method itself
   void getBookFileNames() async {
     FirebaseDB db = FirebaseDB.getReference();
-    BasketContentManager.items = db.getBasketContents(await AuthService.getEmail() as String);
+    final email = await AuthService.getEmail() ?? AuthService.userEmail;
+    BasketContentManager.items = db.getBasketContents(email);
     if (mounted) setState(() {});
   }
 
@@ -340,7 +341,8 @@ class BasketContentManager extends ChangeNotifier {
 
   Future<void> reload() async {
     FirebaseDB db = FirebaseDB.getReference();
-    items = db.getBasketContents(await AuthService.getEmail() as String);
+    final email = await AuthService.getEmail() ?? AuthService.userEmail;
+    items = db.getBasketContents(email);
     notifyListeners();
   }
 }

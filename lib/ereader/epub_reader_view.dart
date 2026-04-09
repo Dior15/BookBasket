@@ -52,6 +52,7 @@ class EpubReaderPage extends StatefulWidget {
 
 class _EpubReaderPageState extends State<EpubReaderPage> {
   bool _isInitialized = false;
+  bool _isInitializing = false; // Guard against concurrent _initializeReader calls
   String? _title, _error;
   final List<EpubSection> _sections = [];
   List<EpubPage> _pages = [];
@@ -75,8 +76,15 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   @override
   void initState() {
     super.initState();
-    _loadSettings();
-    _prepareBook();
+    // Chain: load settings first, then prepare book. This prevents the race
+    // condition where both completing and calling setState would each schedule
+    // a concurrent _initializeReader call before either finishes.
+    _loadSettingsThenPrepare();
+  }
+
+  Future<void> _loadSettingsThenPrepare() async {
+    await _loadSettings();
+    await _prepareBook();
   }
 
   @override
@@ -97,9 +105,9 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
                 (e) => e.name == prefs["readerTheme"],
             orElse: () => ReaderTheme.light,
           );
-          _fontFamily = prefs["readerFontFamily"];
-          // We use 'as num' to safely handle if Firestore returns an int (like 18) instead of a double (18.0)
-          _fontSize = (prefs["readerFontSize"] as num).toDouble();
+          _fontFamily = prefs["readerFontFamily"] as String? ?? 'System Default';
+          // We use 'as num?' to safely handle if Firestore returns an int (like 18), a double (18.0), or null
+          _fontSize = (prefs["readerFontSize"] as num?)?.toDouble() ?? 18.0;
 
           _parser = EpubParser(
             fontFamily: _fontFamily == 'System Default' ? null : _fontFamily,
@@ -202,7 +210,10 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   }
 
   Future<void> _initializeReader(BoxConstraints constraints) async {
-    if (_isInitialized || _title == null) return;
+    // _isInitializing is set synchronously (before any await) so concurrent
+    // calls triggered by setState-rebuilds bail out immediately.
+    if (_isInitialized || _isInitializing || _title == null) return;
+    _isInitializing = true;
 
     List<EpubPage> newPages = [];
 
@@ -221,13 +232,13 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
 
     _pages = newPages;
 
-    // --- NEW: Load progress from Firebase instead of local SharedPreferences ---
     final email = await AuthService.getEmail() ?? AuthService.userEmail;
     final savedPage = await FirebaseDB.getReference().getReadingProgress(email, _title!);
 
     _currentPage = (savedPage < _pages.length) ? savedPage : 0;
     _pageController = PageController(initialPage: _currentPage);
 
+    _isInitializing = false;
     if (mounted) setState(() => _isInitialized = true);
   }
 
@@ -487,7 +498,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
       width: double.infinity,
       height: double.infinity,
       color: themeColors.background,
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 80),
+      padding: const EdgeInsets.fromLTRB(24, 10, 24, 10),
       child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
         child: Html(
@@ -538,7 +549,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   Widget _buildNavigationArrows() {
     final themeColors = ReaderThemeColors.get(_readerTheme);
     return Positioned(
-      bottom: 10, left: 0, right: 0,
+      bottom: 0, left: 0, right: 0,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
