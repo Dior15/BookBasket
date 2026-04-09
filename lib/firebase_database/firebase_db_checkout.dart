@@ -110,4 +110,50 @@ extension BookCheckout on FirebaseDB {
       return(null);
     }
   }
+
+  /// Fetches a list of ALL checked out books globally
+  Future<List<Map<String, dynamic>>> getAllCheckouts() async {
+    QuerySnapshot query = await FirebaseDB._database
+        .collection("bookCheckout")
+        .get();
+
+    return query.docs.map((document) {
+      return {
+        "fileName": document["fileName"].toString(),
+        "username": document["username"].toString(),
+        // Format the date to a clean string
+        "checkoutExpiry": document["checkoutExpiry"].toDate().toString().substring(0, 10)
+      };
+    }).toList();
+  }
+
+  /// NEW: Force returns a book, yanking it from the user's basket and making it available globally
+  Future<void> forceReturnBook(String fileName) async {
+    await FirebaseDB._database.runTransaction((transaction) async {
+      // 1. Find the core book record
+      final bookQuery = await FirebaseDB._database
+          .collection("books")
+          .where("fileName", isEqualTo: fileName)
+          .limit(1)
+          .get();
+
+      // 2. Find the active checkout record
+      final checkoutQuery = await FirebaseDB._database
+          .collection("bookCheckout")
+          .where("fileName", isEqualTo: fileName)
+          .limit(1)
+          .get();
+
+      // 3. Mark as available
+      if (bookQuery.docs.isNotEmpty) {
+        transaction.update(bookQuery.docs.first.reference, {"isBorrowed": false});
+      }
+
+      // 4. Delete the checkout record (this removes it from their basket)
+      if (checkoutQuery.docs.isNotEmpty) {
+        transaction.delete(checkoutQuery.docs.first.reference);
+      }
+    });
+  }
+
 }
