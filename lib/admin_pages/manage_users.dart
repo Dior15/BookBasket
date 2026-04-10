@@ -55,7 +55,7 @@ class _ManageUsersState extends State<ManageUsers> {
         AppUser(
           name: user["username"].toString(), // display name
           email: user["username"].toString(), // email = username
-          role: user["isAdmin"].toString() == "1" ? "Admin" : "User",
+          role: user["isAdmin"] as bool ? "Admin" : "User",
         ),
       );
     }
