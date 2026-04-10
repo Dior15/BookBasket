@@ -272,6 +272,61 @@ class CatalogState extends State<Catalog> with CoverLoader{
               );
             },
           ),
+
+          // ── NEW: All Books Grid Section ──────────────────────────────────────────
+          const Divider(height: 40, thickness: 2, indent: 20, endIndent: 20),
+          _sectionTitle("All Books"),
+          const SizedBox(height: 16),
+
+          FutureBuilder<List<String>>(
+            future: _items,
+            builder: (BuildContext context, AsyncSnapshot<List<String>> snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Center(child: Text("No books found"));
+              }
+
+              final allBooks = snapshot.data!;
+
+              return GridView.builder(
+                // Crucial: These two properties allow the GridView to sit inside the scrolling page
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,        // Sets it to exactly 3 columns wide
+                  childAspectRatio: 0.65,   // Aspect ratio built specifically for book covers
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                itemCount: allBooks.length,
+                itemBuilder: (context, index) {
+                  final title = allBooks[index];
+                  final heroTag = 'allBooks-$title-$index';
+                  final color = const Color.fromARGB(10, 0, 0, 0);
+
+                  return BookCard(
+                    title: title,
+                    color: color,
+                    heroTag: heroTag,
+                    coverPath: title.length < 5
+                        ? ""
+                        : "assets/book_covers/${title.substring(0, title.length - 5)}.jpg",
+                    onTap: () async {
+                      // Fetch availability status asynchronously before navigating
+                      final db = FirebaseDB.getReference();
+                      final availableOn = await db.getBookCheckoutExpiration(title);
+
+                      // Trigger your existing navigation handler
+                      _openDetails(title, color, heroTag, availableOn);
+                    },
+                  );
+                },
+              );
+            },
+          ),
+
           const SizedBox(height: 75),
         ],
       ),
