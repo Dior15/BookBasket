@@ -268,14 +268,31 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     _pages = newPages;
 
     final email = await AuthService.getEmail() ?? AuthService.userEmail;
-    final savedPage =
-        await FirebaseDB.getReference().getReadingProgress(email, _title!);
+    final savedProgress =
+      await FirebaseDB.getReference().getReadingProgress(email, _title!);
 
-    _currentPage = (savedPage < _pages.length) ? savedPage : 0;
+    _currentPage = _resolveSavedPage(savedProgress);
     _pageController = PageController(initialPage: _currentPage);
 
     _isInitializing = false;
     if (mounted) setState(() => _isInitialized = true);
+  }
+
+  int _resolveSavedPage(ReadingProgress savedProgress) {
+    if (_pages.isEmpty) return 0;
+
+    final sectionIndex = savedProgress.currentSectionIndex;
+    if (sectionIndex != null) {
+      final sectionPage = _firstPageIndexForSection(sectionIndex);
+      if (sectionPage != -1) return sectionPage;
+    }
+
+    final savedPage = savedProgress.currentPage;
+    return (savedPage >= 0 && savedPage < _pages.length) ? savedPage : 0;
+  }
+
+  int _firstPageIndexForSection(int sectionIndex) {
+    return _pages.indexWhere((p) => p.sectionIndex == sectionIndex);
   }
 
   void _changeFontFamily(String newFamily) {
@@ -298,13 +315,16 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     _saveFontFamily(newFamily);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      int fallbackIndex =
-          _pages.indexWhere((p) => p.sectionIndex == currentSection);
+      int fallbackIndex = _firstPageIndexForSection(currentSection);
       if (fallbackIndex == -1) fallbackIndex = 0;
 
       final email = await AuthService.getEmail() ?? AuthService.userEmail;
-      await FirebaseDB.getReference()
-          .saveReadingProgress(email, _title!, fallbackIndex);
+      await FirebaseDB.getReference().saveReadingProgress(
+        email,
+        _title!,
+        fallbackIndex,
+        currentSectionIndex: currentSection,
+      );
     });
   }
 
@@ -340,11 +360,16 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     _saveFontSize(newSize);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final prefs = await SharedPreferences.getInstance();
-      int fallbackIndex =
-          _pages.indexWhere((p) => p.sectionIndex == currentSection);
+      int fallbackIndex = _firstPageIndexForSection(currentSection);
       if (fallbackIndex == -1) fallbackIndex = 0;
-      await prefs.setInt('epub_pos_${_title!.hashCode}', fallbackIndex);
+
+      final email = await AuthService.getEmail() ?? AuthService.userEmail;
+      await FirebaseDB.getReference().saveReadingProgress(
+        email,
+        _title!,
+        fallbackIndex,
+        currentSectionIndex: currentSection,
+      );
     });
   }
 
@@ -376,13 +401,16 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      int fallbackIndex =
-          _pages.indexWhere((p) => p.sectionIndex == currentSection);
+      int fallbackIndex = _firstPageIndexForSection(currentSection);
       if (fallbackIndex == -1) fallbackIndex = 0;
 
       final email = await AuthService.getEmail() ?? AuthService.userEmail;
-      await FirebaseDB.getReference()
-          .saveReadingProgress(email, _title!, fallbackIndex);
+      await FirebaseDB.getReference().saveReadingProgress(
+        email,
+        _title!,
+        fallbackIndex,
+        currentSectionIndex: currentSection,
+      );
     });
   }
 
@@ -510,7 +538,14 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     if (_title == null) return;
 
     final email = await AuthService.getEmail() ?? AuthService.userEmail;
-    await FirebaseDB.getReference().saveReadingProgress(email, _title!, index);
+    final sectionIndex =
+        (index >= 0 && index < _pages.length) ? _pages[index].sectionIndex : 0;
+    await FirebaseDB.getReference().saveReadingProgress(
+      email,
+      _title!,
+      index,
+      currentSectionIndex: sectionIndex,
+    );
   }
 
   Widget _buildTapZones() {
