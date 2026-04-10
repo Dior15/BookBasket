@@ -52,6 +52,7 @@ class EpubReaderPage extends StatefulWidget {
 
 class _EpubReaderPageState extends State<EpubReaderPage> {
   static const Color _navSelectionAccent = Color(0xFF3949AB);
+  static const Duration _layoutRefreshDebounce = Duration(milliseconds: 400);
   bool _isInitialized = false;
   bool _isInitializing =
       false; // Guard against concurrent _initializeReader calls
@@ -74,6 +75,8 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   double _fontSize = 18.0;
 
   Timer? _fontSizeDebounceTimer;
+  Timer? _layoutRefreshDebounceTimer;
+  BoxConstraints? _lastLayoutConstraints;
 
   @override
   void initState() {
@@ -92,6 +95,7 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   @override
   void dispose() {
     _fontSizeDebounceTimer?.cancel();
+    _layoutRefreshDebounceTimer?.cancel();
     _pageController?.dispose();
     super.dispose();
   }
@@ -318,6 +322,43 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     });
   }
 
+  bool _hasLayoutChanged(BoxConstraints constraints) {
+    if (_lastLayoutConstraints == null) return false;
+
+    return _lastLayoutConstraints!.maxWidth != constraints.maxWidth ||
+        _lastLayoutConstraints!.maxHeight != constraints.maxHeight;
+  }
+
+  void _scheduleLayoutRefresh() {
+    if (!_isInitialized || _isInitializing || _title == null) return;
+
+    _layoutRefreshDebounceTimer?.cancel();
+    _layoutRefreshDebounceTimer = Timer(_layoutRefreshDebounce, () {
+      if (!mounted || !_isInitialized || _isInitializing || _title == null) {
+        return;
+      }
+      _refreshForLayoutChange();
+    });
+  }
+
+  void _refreshForLayoutChange() {
+    final currentSection =
+        _pages.isNotEmpty ? _pages[_currentPage].sectionIndex : 0;
+
+    setState(() {
+      _isInitialized = false;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      int fallbackIndex = _pages.indexWhere((p) => p.sectionIndex == currentSection);
+      if (fallbackIndex == -1) fallbackIndex = 0;
+
+      final email = await AuthService.getEmail() ?? AuthService.userEmail;
+      await FirebaseDB.getReference()
+          .saveReadingProgress(email, _title!, fallbackIndex);
+    });
+  }
+
   void _jumpToPreviousChapter() {
     if (_pages.isEmpty) return;
     int currentSection = _pages[_currentPage].sectionIndex;
@@ -394,6 +435,17 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
       endDrawer: _isInitialized ? _buildEndDrawer(themeColors) : null,
       body: LayoutBuilder(
         builder: (context, constraints) {
+          if (constraints.maxWidth <= 0 || constraints.maxHeight <= 0) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (_isInitialized && _hasLayoutChanged(constraints)) {
+            _lastLayoutConstraints = constraints;
+            _scheduleLayoutRefresh();
+          } else {
+            _lastLayoutConstraints ??= constraints;
+          }
+
           if (!_isInitialized && _title != null && constraints.maxWidth > 0) {
             WidgetsBinding.instance
                 .addPostFrameCallback((_) => _initializeReader(constraints));
