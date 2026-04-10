@@ -15,13 +15,14 @@ class MapPage extends StatefulWidget {
   State<MapPage> createState() => _MapPageState();
 }
 
-class _MapPageState extends State<MapPage> {
+class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
   List<ReadingMarker> _markers = [];
   LatLng? _currentPosition;
   String? _currentUserEmail;
 
   final MapController _mapController = MapController();
   final List<StreamSubscription<List<ReadingMarker>>> _markerSubscriptions = [];
+  AnimationController? _cameraAnimationController;
 
   @override
   void initState() {
@@ -32,6 +33,7 @@ class _MapPageState extends State<MapPage> {
 
   @override
   void dispose() {
+    _stopCameraAnimation();
     for (var sub in _markerSubscriptions) {
       sub.cancel();
     }
@@ -53,13 +55,98 @@ class _MapPageState extends State<MapPage> {
     }
     if (permission == LocationPermission.deniedForever) return;
 
-    Position position = await Geolocator.getCurrentPosition();
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.low,
+    );
     if (!mounted) return;
     setState(() {
       _currentPosition = LatLng(position.latitude, position.longitude);
     });
 
     _mapController.move(_currentPosition!, 13.0);
+  }
+
+  void _stopCameraAnimation() {
+    _cameraAnimationController?.stop();
+    _cameraAnimationController?.dispose();
+    _cameraAnimationController = null;
+  }
+
+  void _animateCameraTransition({
+    LatLng? targetCenter,
+    double? targetZoom,
+    double? targetRotation,
+    Duration duration = const Duration(milliseconds: 600),
+    Curve curve = Curves.easeInOutCubic,
+  }) {
+    final camera = _mapController.camera;
+    final startCenter = camera.center;
+    final endCenter = targetCenter ?? startCenter;
+
+    final startZoom = camera.zoom;
+    final endZoom = targetZoom ?? startZoom;
+
+    final startRotation = camera.rotation;
+    final endRotation = targetRotation ?? startRotation;
+
+    final shouldAnimate = startCenter.latitude != endCenter.latitude ||
+        startCenter.longitude != endCenter.longitude ||
+        startZoom != endZoom ||
+        startRotation != endRotation;
+    if (!shouldAnimate) return;
+
+    _stopCameraAnimation();
+    final controller = AnimationController(vsync: this, duration: duration);
+    final animation = CurvedAnimation(parent: controller, curve: curve);
+    _cameraAnimationController = controller;
+
+    controller.addListener(() {
+      final t = animation.value;
+      final animatedCenter = LatLng(
+        startCenter.latitude + (endCenter.latitude - startCenter.latitude) * t,
+        startCenter.longitude + (endCenter.longitude - startCenter.longitude) * t,
+      );
+      final animatedZoom = startZoom + (endZoom - startZoom) * t;
+      final animatedRotation = startRotation + (endRotation - startRotation) * t;
+
+      _mapController.moveAndRotate(animatedCenter, animatedZoom, animatedRotation);
+    });
+
+    controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed ||
+          status == AnimationStatus.dismissed) {
+        if (_cameraAnimationController == controller) {
+          controller.dispose();
+          _cameraAnimationController = null;
+        }
+      }
+    });
+
+    controller.forward();
+  }
+
+  void _resetMapToNorth() {
+    _animateCameraTransition(
+      targetRotation: 0.0,
+      duration: const Duration(milliseconds: 550),
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
+  void _recenterToCurrentLocation() {
+    if (_currentPosition == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Current location is unavailable.')),
+      );
+      return;
+    }
+
+    _animateCameraTransition(
+      targetCenter: _currentPosition!,
+      targetZoom: _mapController.camera.zoom,
+      duration: const Duration(milliseconds: 650),
+      curve: Curves.easeInOutCubic,
+    );
   }
 
   Future<void> _listenToCommunalMarkers() async {
@@ -196,21 +283,41 @@ class _MapPageState extends State<MapPage> {
       onTap: () {
         // Close the bottom sheet and pan to the marker
         Navigator.pop(context);
-        _mapController.move(LatLng(marker.latitude, marker.longitude), 15.0);
+        _animateCameraTransition(
+          targetCenter: LatLng(marker.latitude, marker.longitude),
+          targetZoom: 15.0,
+          duration: const Duration(milliseconds: 650),
+          curve: Curves.easeInOutCubic,
+        );
       },
     );
   }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Communal Map"),
-        actions: [
-          // NEW: The AppBar button to open the list
-          IconButton(
-            icon: const Icon(Icons.place),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'compass_fab',
+            tooltip: 'Reset to North',
+            onPressed: _resetMapToNorth,
+            child: const Icon(Icons.explore),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.small(
+            heroTag: 'recenter_fab',
+            tooltip: 'Recenter to My Location',
+            onPressed: _recenterToCurrentLocation,
+            child: const Icon(Icons.my_location),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.small(
+            heroTag: 'marker_list_fab',
             tooltip: 'View Marker List',
             onPressed: _showMarkerList,
+            child: const Icon(Icons.place),
           ),
         ],
       ),
