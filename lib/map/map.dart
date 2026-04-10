@@ -72,6 +72,16 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
     _cameraAnimationController = null;
   }
 
+  double _normalizeRotation(double degrees) {
+    return ((degrees % 360) + 360) % 360;
+  }
+
+  double _shortestRotationDelta(double fromDegrees, double toDegrees) {
+    final from = _normalizeRotation(fromDegrees);
+    final to = _normalizeRotation(toDegrees);
+    return (((to - from + 540) % 360) - 180);
+  }
+
   void _animateCameraTransition({
     LatLng? targetCenter,
     double? targetZoom,
@@ -88,11 +98,12 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
 
     final startRotation = camera.rotation;
     final endRotation = targetRotation ?? startRotation;
+    final rotationDelta = _shortestRotationDelta(startRotation, endRotation);
 
     final shouldAnimate = startCenter.latitude != endCenter.latitude ||
         startCenter.longitude != endCenter.longitude ||
         startZoom != endZoom ||
-        startRotation != endRotation;
+      rotationDelta.abs() > 0.001;
     if (!shouldAnimate) return;
 
     _stopCameraAnimation();
@@ -107,7 +118,7 @@ class _MapPageState extends State<MapPage> with TickerProviderStateMixin {
         startCenter.longitude + (endCenter.longitude - startCenter.longitude) * t,
       );
       final animatedZoom = startZoom + (endZoom - startZoom) * t;
-      final animatedRotation = startRotation + (endRotation - startRotation) * t;
+      final animatedRotation = startRotation + rotationDelta * t;
 
       _mapController.moveAndRotate(animatedCenter, animatedZoom, animatedRotation);
     });
