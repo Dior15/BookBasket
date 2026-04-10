@@ -14,18 +14,22 @@ class EpubParser {
     this.fontFamily,
   });
 
+  /// Scale factor applied to every text-block height measured by TextPainter.
+  /// flutter_html's rendering pipeline (RichText → RenderParagraph → HtmlWidget)
+  /// consistently produces slightly taller output than raw TextPainter layout.
+  /// 1.12 was calibrated against real EPUB content across portrait and landscape.
+  static const double _kHeightScale = 1.12;
+
   List<EpubPage> paginate({
     required List<EpubSection> sections,
-    required double maxHeight,
-    required double maxWidth,
-    required double horizontalPadding,
-    Map<String, Size>? imageSizes, // Accept image sizes
+    required double contentHeight,
+    required double contentWidth,
+    Map<String, Size>? imageSizes,
   }) {
     final List<EpubPage> pages = [];
-    final double availableWidth = maxWidth - (horizontalPadding * 2);
+    final double availableWidth = contentWidth;
     // Clamp to a minimum so landscape mode never goes zero/negative
-    final double rawTarget = maxHeight - (horizontalPadding * 2) - 120;
-    final double targetHeight = rawTarget < 50.0 ? 50.0 : rawTarget;
+    final double targetHeight = contentHeight < 50.0 ? 50.0 : contentHeight;
 
     for (int i = 0; i < sections.length; i++) {
       final section = sections[i];
@@ -74,49 +78,77 @@ class EpubParser {
     return pages;
   }
 
-  // Measure exact image height based on the map, capping at 500px
+  /// Decodes common HTML entities to their real Unicode characters, then
+  /// strips all remaining HTML tags. This ensures TextPainter measures the
+  /// exact same character sequence that flutter_html renders — including the
+  /// &nbsp; indent spaces we inject — so line-wrap counts are accurate.
+  String _htmlToPlainText(String html) {
+    // 1. Strip tags first
+    String text = html.replaceAll(RegExp(r'<[^>]*>'), '');
+    // 2. Decode entities to real characters so TextPainter sees them
+    text = text
+        .replaceAll('&nbsp;', '\u00A0') // non-breaking space
+        .replaceAll('&amp;',  '&')
+        .replaceAll('&lt;',   '<')
+        .replaceAll('&gt;',   '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&apos;', "'")
+        .replaceAll('&mdash;', '\u2014')
+        .replaceAll('&ndash;', '\u2013')
+        .replaceAll('&lsquo;', '\u2018')
+        .replaceAll('&rsquo;', '\u2019')
+        .replaceAll('&ldquo;', '\u201C')
+        .replaceAll('&rdquo;', '\u201D')
+        // Numeric entities: &#160; or &#xA0;
+        .replaceAllMapped(RegExp(r'&#x([0-9a-fA-F]+);'), (m) =>
+            String.fromCharCode(int.parse(m.group(1)!, radix: 16)))
+        .replaceAllMapped(RegExp(r'&#([0-9]+);'), (m) =>
+            String.fromCharCode(int.parse(m.group(1)!)));
+    return text.trim();
+  }
+
+  // Measure exact image height based on the map, capping at 400px
   double _measureHeight(String html, double width, Map<String, Size>? imageSizes) {
     if (html.contains('<img')) {
       if (imageSizes != null) {
-        // Find the src attribute to identify the image
-        final srcMatch = RegExp(r'src="([^"]+)"').firstMatch(html) ?? RegExp(r"src='([^']+)'").firstMatch(html);
+        final srcMatch = RegExp(r'src="([^"]+)"').firstMatch(html)
+            ?? RegExp(r"src='([^']+)'").firstMatch(html);
         if (srcMatch != null) {
           final src = srcMatch.group(1)!;
           final size = imageSizes[src] ?? imageSizes[src.split('/').last];
-
           if (size != null) {
             double calculatedHeight = size.height;
-            // Scale height proportionally if image is wider than the screen
             if (size.width > width) {
               calculatedHeight = (size.height / size.width) * width;
             }
-
-            // FIX: Reserve exact size UNLESS it's taller than 500, then cap it at 500!
             return calculatedHeight > 400.0 ? 400.0 : calculatedHeight;
           }
         }
       }
-      return 400.0; // Fallback if image isn't found
+      return 400.0;
     }
 
-    final text = html.replaceAll(RegExp(r'<[^>]*>|&[^;]+;'), '').trim();
+    // Use entity-aware conversion so TextPainter sees &nbsp; as a real space
+    final text = _htmlToPlainText(html);
     if (text.isEmpty) return 0;
 
-    double measureSize = html.contains('<h') ? fontSize * 1.5 : fontSize;
+    final bool isHeading = html.contains('<h');
+    final double measureSize = isHeading ? fontSize * 1.5 : fontSize;
     final tp = TextPainter(
       text: TextSpan(
-          text: text,
-          style: TextStyle(
-            fontSize: measureSize,
-            height: lineHeight,
-            fontWeight: html.contains('<h') ? FontWeight.bold : FontWeight.normal,
-            fontFamily: fontFamily,
-          )
+        text: text,
+        style: TextStyle(
+          fontSize: measureSize,
+          height: lineHeight,
+          fontWeight: isHeading ? FontWeight.bold : FontWeight.normal,
+          fontFamily: fontFamily,
+        ),
       ),
       textDirection: TextDirection.ltr,
     );
     tp.layout(maxWidth: width);
-    return tp.size.height;
+    // Scale up to match flutter_html's actual rendered height
+    return tp.size.height * _kHeightScale;
   }
 
   List<String> _splitHtmlIntoBlocks(String html) {
@@ -133,7 +165,9 @@ class EpubParser {
 
   SplitResult _splitBlockToFit(String html, double width, double remainingHeight) {
     if (html.contains('<img')) return SplitResult(fits: "", remains: html);
-    final text = html.replaceAll(RegExp(r'<[^>]*>|&[^;]+;'), '');
+
+    // Decode entities so character offsets match the rendered text
+    final text = _htmlToPlainText(html);
     if (text.isEmpty) return SplitResult(fits: "", remains: html);
 
     final tagMatch = RegExp(r'<(p|h[1-6]|div|li|title)[^>]*>', caseSensitive: false).firstMatch(html);
@@ -141,7 +175,10 @@ class EpubParser {
     final String openTag = tagMatch?.group(0) ?? "<$tagName>";
 
     final tp = TextPainter(
-      text: TextSpan(text: text, style: TextStyle(fontSize: fontSize, height: lineHeight, fontFamily: fontFamily)),
+      text: TextSpan(
+        text: text,
+        style: TextStyle(fontSize: fontSize, height: lineHeight, fontFamily: fontFamily),
+      ),
       textDirection: TextDirection.ltr,
     );
     tp.layout(maxWidth: width);
@@ -152,11 +189,13 @@ class EpubParser {
     for (int i = 0; i < lines.length; i++) {
       if (currentHeight + lines[i].height > remainingHeight && i > 0) break;
       currentHeight += lines[i].height;
-      charOffset = tp.getPositionForOffset(Offset(width, currentHeight - (lines[i].height / 2))).offset;
+      charOffset = tp.getPositionForOffset(
+        Offset(width, currentHeight - (lines[i].height / 2)),
+      ).offset;
       // Always fit at least one line to guarantee forward progress
       if (i == 0 && charOffset == 0 && lines.isNotEmpty) {
         charOffset = tp.getPositionForOffset(Offset(width, lines[0].height / 2)).offset;
-        if (charOffset == 0 && text.isNotEmpty) charOffset = 1; // absolute minimum: 1 char
+        if (charOffset == 0 && text.isNotEmpty) charOffset = 1;
       }
     }
 

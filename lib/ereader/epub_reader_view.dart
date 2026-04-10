@@ -53,6 +53,14 @@ class EpubReaderPage extends StatefulWidget {
 class _EpubReaderPageState extends State<EpubReaderPage> {
   static const Color _navSelectionAccent = Color(0xFF3949AB);
   static const Duration _layoutRefreshDebounce = Duration(milliseconds: 400);
+
+  // Layout constants — kept in one place so paginator and renderer stay in sync
+  static const double _pagePaddingH = 24.0; // horizontal padding inside page
+  static const double _pagePaddingTop = 10.0;
+  static const double _pagePaddingBottom = 10.0;
+  static const double _navBarHeight = 48.0; // bottom navigation row
+  static const double _navBarBottomMargin =
+      15.0; // lift nav bar off bottom edge
   bool _isInitialized = false;
   bool _isInitializing =
       false; // Guard against concurrent _initializeReader calls
@@ -225,12 +233,30 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
 
     List<EpubPage> newPages = [];
 
+    // Overflow guard: compensates for flutter_html rendering slightly taller
+    // than TextPainter measures. Uses shortestSide (the screen's smaller
+    // dimension) so the guard is ORIENTATION-INDEPENDENT — same value in
+    // portrait and landscape. Calibrated from two real devices:
+    //   - 2000x1200 tablet  (short side 1200px, DPR≈2.0): 600/2.0 = 300
+    //   - 2400x1080 phone   (short side 1080px, DPR≈3.0): 360/3.0 = 120
+    // Clamped to 40px minimum so it can never go zero or negative.
+    final double dpr = MediaQuery.of(context).devicePixelRatio;
+    final double kOverflowGuard =
+        (MediaQuery.of(context).size.shortestSide / dpr * 0.7)
+            .clamp(40.0, double.infinity);
+    final double contentHeight = constraints.maxHeight -
+        _pagePaddingTop -
+        _pagePaddingBottom -
+        _navBarHeight -
+        _navBarBottomMargin -
+        kOverflowGuard;
+    final double contentWidth = constraints.maxWidth - (_pagePaddingH * 2);
+
     for (int i = 0; i < _sections.length; i++) {
       final chunk = _parser.paginate(
         sections: [_sections[i]],
-        maxHeight: constraints.maxHeight - 57.0,
-        maxWidth: constraints.maxWidth,
-        horizontalPadding: 24.0,
+        contentHeight: contentHeight,
+        contentWidth: contentWidth,
         imageSizes: _imageSizes,
       );
 
@@ -350,7 +376,8 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      int fallbackIndex = _pages.indexWhere((p) => p.sectionIndex == currentSection);
+      int fallbackIndex =
+          _pages.indexWhere((p) => p.sectionIndex == currentSection);
       if (fallbackIndex == -1) fallbackIndex = 0;
 
       final email = await AuthService.getEmail() ?? AuthService.userEmail;
@@ -569,9 +596,15 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
       width: double.infinity,
       height: double.infinity,
       color: themeColors.background,
-      padding: const EdgeInsets.fromLTRB(24, 10, 24, 10),
-      child: SingleChildScrollView(
-        physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(
+        _pagePaddingH,
+        _pagePaddingTop,
+        _pagePaddingH,
+        _pagePaddingBottom +
+            _navBarHeight +
+            _navBarBottomMargin, // reserve space for the bottom nav overlay
+      ),
+      child: ClipRect(
         child: Html(
           data: _pages[index].html,
           extensions: [
@@ -608,7 +641,8 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
               margin: Margins.zero,
               color: themeColors.text,
             ),
-            "p": Style(margin: Margins.only(bottom: _parser.paragraphSpacing)),
+            "p": Style(
+                margin: Margins.only(top: 0, bottom: _parser.paragraphSpacing)),
             "h1": Style(color: themeColors.text),
             "h2": Style(color: themeColors.text),
             "h3": Style(color: themeColors.text),
@@ -621,9 +655,10 @@ class _EpubReaderPageState extends State<EpubReaderPage> {
   Widget _buildNavigationArrows() {
     final themeColors = ReaderThemeColors.get(_readerTheme);
     return Positioned(
-      bottom: 10,
+      bottom: _navBarBottomMargin,
       left: 0,
       right: 0,
+      height: _navBarHeight,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
